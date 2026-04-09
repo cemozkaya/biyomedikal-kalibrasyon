@@ -45,7 +45,7 @@
         .login-container input::placeholder {
             color: #a0a0b0;
         }
-        .login-container button {
+        .login-container button, .menu-btn, .back-btn {
             width: 100%;
             padding: 12px;
             border: none;
@@ -56,7 +56,7 @@
             cursor: pointer;
             transition: background-color 0.3s;
         }
-        .login-container button:hover {
+        .login-container button:hover, .menu-btn:hover, .back-btn:hover {
             background-color: #c73652;
         }
         .error-msg {
@@ -64,22 +64,112 @@
             margin-top: 12px;
             display: none;
         }
-        .welcome {
+
+        /* Ana Menü */
+        .menu {
             display: none;
             text-align: center;
+            width: 400px;
         }
-        .welcome h1 {
+        .menu h1 {
             color: #e94560;
-            font-size: 3rem;
-            margin-bottom: 10px;
+            font-size: 2rem;
+            margin-bottom: 30px;
         }
-        .welcome p {
+        .menu-btn {
+            display: block;
+            margin-bottom: 16px;
+            background-color: #0f3460;
+        }
+        .menu-btn:hover {
+            background-color: #e94560;
+        }
+
+        /* Alt Sayfalar */
+        .page {
+            display: none;
+            background-color: #16213e;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            width: 500px;
+            text-align: center;
+        }
+        .page h2 {
+            color: #e94560;
+            font-size: 1.6rem;
+            margin-bottom: 24px;
+        }
+        .page input, .page select {
+            width: 100%;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            border: none;
+            border-radius: 8px;
+            background-color: #0f3460;
+            color: #fff;
+            font-size: 1rem;
+            outline: none;
+        }
+        .page input::placeholder {
             color: #a0a0b0;
-            font-size: 1.2rem;
+        }
+        .page select option {
+            background-color: #0f3460;
+        }
+        .back-btn {
+            margin-top: 16px;
+            background-color: #533483;
+        }
+        .back-btn:hover {
+            background-color: #3d2463;
+        }
+        .save-btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background-color: #e94560;
+            color: #fff;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .save-btn:hover {
+            background-color: #c73652;
+        }
+        .success-msg {
+            color: #51cf66;
+            margin-top: 12px;
+            display: none;
+        }
+
+        /* Veri Tablosu */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+        .data-table th, .data-table td {
+            padding: 10px;
+            border: 1px solid #0f3460;
+            color: #fff;
+            font-size: 0.9rem;
+        }
+        .data-table th {
+            background-color: #e94560;
+        }
+        .data-table td {
+            background-color: #0f3460;
+        }
+        .empty-msg {
+            color: #a0a0b0;
+            margin-top: 16px;
         }
     </style>
 </head>
 <body>
+    <!-- Giriş Ekranı -->
     <div class="login-container" id="loginBox">
         <h1>Giriş Yap</h1>
         <input type="text" id="username" placeholder="Kullanıcı Adı">
@@ -88,21 +178,125 @@
         <p class="error-msg" id="errorMsg">Kullanıcı adı veya şifre hatalı!</p>
     </div>
 
-    <div class="welcome" id="welcomeBox">
+    <!-- Ana Menü -->
+    <div class="menu" id="menuBox">
         <h1>Biyomedikal Kalibrasyon Sistemi</h1>
+        <button class="menu-btn" onclick="showPage('userPage')">Yeni Kullanıcı Tanımlama</button>
+        <button class="menu-btn" onclick="showPage('calibrationPage')">Kalibrasyon Yap</button>
+        <button class="menu-btn" onclick="showPage('dataPage')">Veriler</button>
+    </div>
+
+    <!-- Yeni Kullanıcı Tanımlama -->
+    <div class="page" id="userPage">
+        <h2>Yeni Kullanıcı Tanımlama</h2>
+        <input type="text" id="newUsername" placeholder="Kullanıcı Adı">
+        <input type="password" id="newPassword" placeholder="Şifre">
+        <input type="text" id="newFullname" placeholder="Ad Soyad">
+        <button class="save-btn" onclick="saveUser()">Kaydet</button>
+        <p class="success-msg" id="userSuccess">Kullanıcı başarıyla kaydedildi!</p>
+        <button class="back-btn" onclick="goBack()">Geri Dön</button>
+    </div>
+
+    <!-- Kalibrasyon Yap -->
+    <div class="page" id="calibrationPage">
+        <h2>Kalibrasyon Yap</h2>
+        <input type="text" id="deviceName" placeholder="Cihaz Adı">
+        <input type="text" id="deviceSerial" placeholder="Seri Numarası">
+        <input type="date" id="calibrationDate">
+        <input type="text" id="calibrationResult" placeholder="Kalibrasyon Sonucu">
+        <button class="save-btn" onclick="saveCalibration()">Kaydet</button>
+        <p class="success-msg" id="calSuccess">Kalibrasyon kaydedildi!</p>
+        <button class="back-btn" onclick="goBack()">Geri Dön</button>
+    </div>
+
+    <!-- Veriler -->
+    <div class="page" id="dataPage">
+        <h2>Veriler</h2>
+        <div id="dataContent"></div>
+        <button class="back-btn" onclick="goBack()">Geri Dön</button>
     </div>
 
     <script>
+        var users = [];
+        var calibrations = [];
+
         function login() {
             var username = document.getElementById('username').value;
             var password = document.getElementById('password').value;
 
-            if (username === 'admin' && password === 'admin') {
+            var valid = (username === 'admin' && password === 'admin') ||
+                        users.some(function(u) { return u.username === username && u.password === password; });
+
+            if (valid) {
                 document.getElementById('loginBox').style.display = 'none';
-                document.getElementById('welcomeBox').style.display = 'block';
+                document.getElementById('menuBox').style.display = 'block';
             } else {
                 document.getElementById('errorMsg').style.display = 'block';
             }
+        }
+
+        function showPage(pageId) {
+            document.getElementById('menuBox').style.display = 'none';
+            document.getElementById(pageId).style.display = 'block';
+
+            if (pageId === 'dataPage') {
+                renderData();
+            }
+        }
+
+        function goBack() {
+            var pages = document.querySelectorAll('.page');
+            pages.forEach(function(p) { p.style.display = 'none'; });
+            document.querySelectorAll('.success-msg').forEach(function(m) { m.style.display = 'none'; });
+            document.getElementById('menuBox').style.display = 'block';
+        }
+
+        function saveUser() {
+            var username = document.getElementById('newUsername').value;
+            var password = document.getElementById('newPassword').value;
+            var fullname = document.getElementById('newFullname').value;
+
+            if (username && password && fullname) {
+                users.push({ username: username, password: password, fullname: fullname });
+                document.getElementById('newUsername').value = '';
+                document.getElementById('newPassword').value = '';
+                document.getElementById('newFullname').value = '';
+                document.getElementById('userSuccess').style.display = 'block';
+                setTimeout(function() { document.getElementById('userSuccess').style.display = 'none'; }, 2000);
+            }
+        }
+
+        function saveCalibration() {
+            var device = document.getElementById('deviceName').value;
+            var serial = document.getElementById('deviceSerial').value;
+            var date = document.getElementById('calibrationDate').value;
+            var result = document.getElementById('calibrationResult').value;
+
+            if (device && serial && date && result) {
+                calibrations.push({ device: device, serial: serial, date: date, result: result });
+                document.getElementById('deviceName').value = '';
+                document.getElementById('deviceSerial').value = '';
+                document.getElementById('calibrationDate').value = '';
+                document.getElementById('calibrationResult').value = '';
+                document.getElementById('calSuccess').style.display = 'block';
+                setTimeout(function() { document.getElementById('calSuccess').style.display = 'none'; }, 2000);
+            }
+        }
+
+        function renderData() {
+            var html = '';
+
+            if (calibrations.length === 0) {
+                html = '<p class="empty-msg">Henüz kalibrasyon verisi bulunmuyor.</p>';
+            } else {
+                html = '<table class="data-table"><tr><th>Cihaz</th><th>Seri No</th><th>Tarih</th><th>Sonuç</th></tr>';
+                calibrations.forEach(function(c) {
+                    html += '<tr><td>' + c.device + '</td><td>' + c.serial + '</td><td>' + c.date + '</td><td>' + c.result + '</td></tr>';
+                });
+                html += '</table>';
+            }
+
+            document.getElementById('dataContent').innerHTML = html;
         }
 
         document.getElementById('password').addEventListener('keydown', function(e) {
