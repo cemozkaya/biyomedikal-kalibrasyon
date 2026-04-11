@@ -3293,7 +3293,12 @@ function setupMenu() {
 function goToMenu() {
   setupMenu();
   showPage('pgMenu');
-  maybeShowChangelog();
+  // Deep-link (QR'dan açıldıysa) önceliklidir — changelog'u sonraki girişe ertele
+  if (_pendingDeepLinkRaporNo) {
+    _maybeOpenDeepLinkRapor();
+  } else {
+    maybeShowChangelog();
+  }
 }
 
 // =====================================================
@@ -3737,8 +3742,17 @@ const SEEN_KEYS = {
 //   2) CHANGELOG'un EN ÜSTÜNE yeni bir girdi ekle
 // Login sonrası, kullanıcı daha önce bu sürümü görmediyse popup açılır.
 // =====================================================
-const APP_VERSION = '2026.04.12.4';
+const APP_VERSION = '2026.04.12.5';
 const CHANGELOG = [
+  {
+    version: '2026.04.12.5',
+    title: 'Sürüm 12 Nisan 2026 (5)',
+    items: [
+      'PDF\'teki QR kod artık raporun web bağlantısını içeriyor: telefon kamerasıyla taranınca uygulamayı açar ve giriş sonrası ilgili rapor otomatik olarak görüntülenir',
+      'PDF altındaki QR etiketi "Raporu Görüntüle" olarak güncellendi',
+      'URL\'deki ?rapor= parametresi yakalanır, login sonrası ilgili rapor önizlemesi otomatik açılır (rapor bulunamazsa "Rapor bulunamadı" mesajı gösterilir)'
+    ]
+  },
   {
     version: '2026.04.12.4',
     title: 'Sürüm 12 Nisan 2026 (4)',
@@ -3796,6 +3810,62 @@ function ackChangelog() {
   try { localStorage.setItem('bmk_last_seen_version', APP_VERSION); } catch (_) {}
   const modal = document.getElementById('changelogModal');
   if (modal) modal.classList.add('hidden');
+}
+
+// =====================================================
+// QR DERİN BAĞLANTI (deep link)
+// PDF QR kodu taranınca https://.../?rapor=<raporNo> açılır.
+// Sayfa yüklenirken parametre yakalanır, login sonrası ilgili rapor
+// önizlemesi otomatik açılır.
+// =====================================================
+let _pendingDeepLinkRaporNo = null;
+
+function _readDeepLinkRapor() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const raporNo = (params.get('rapor') || '').trim();
+    if (raporNo) {
+      _pendingDeepLinkRaporNo = raporNo;
+      // URL'yi temizle — refresh'te yine tetiklenmesin, address bar temiz olsun
+      try {
+        const cleanUrl = window.location.pathname + window.location.hash;
+        window.history.replaceState({}, document.title, cleanUrl);
+      } catch (_) {}
+    }
+  } catch (_) {}
+}
+
+async function _maybeOpenDeepLinkRapor() {
+  if (!_pendingDeepLinkRaporNo) return;
+  const target = _pendingDeepLinkRaporNo;
+  _pendingDeepLinkRaporNo = null;
+  try {
+    // Gerçek modda raporlar yüklenmemişse yükle
+    if (!isDemo) {
+      if (!vrAllRaporlar || !vrAllRaporlar.length) {
+        try { await loadVeriler(); } catch (_) {}
+      }
+    } else {
+      // Demo modda DEMO_RAPORLAR'dan vrAllRaporlar'ı doldur
+      if (!DEMO_RAPORLAR) {
+        try { DEMO_RAPORLAR = buildDemoRaporlar(); } catch (_) { DEMO_RAPORLAR = []; }
+      }
+      if (!vrAllRaporlar || !vrAllRaporlar.length) {
+        vrAllRaporlar = (DEMO_RAPORLAR || []).slice();
+      }
+    }
+    // Onay listesinin de yüklü olması için bir mini girişim
+    if (typeof onAllRaporlar !== 'undefined' && (!onAllRaporlar || !onAllRaporlar.length)) {
+      onAllRaporlar = (vrAllRaporlar || []).slice();
+    }
+    // vrOpenPdfFromList vrToast ile "Rapor bulunamadı" mesajını da gösterir
+    if (typeof vrOpenPdfFromList === 'function') {
+      // Kısa bir gecikme — menü render bittikten sonra modal açılsın
+      setTimeout(() => { try { vrOpenPdfFromList(target); } catch (_) {} }, 200);
+    }
+  } catch (e) {
+    if (typeof vrToast === 'function') vrToast('Rapor açılamadı');
+  }
 }
 
 // Demo modu için in-memory seen (localStorage kirletmemek ve fresh başlatmak için).
@@ -9205,27 +9275,15 @@ function pdfHeader(sayfaNo) {
     '<div class="pdf-hline"></div>';
 }
 
-// ---- QR kod: rapor bilgilerini taşıyan metin ----
-// Bu metin pdfBildirim() içinde data-qr attribute'una encode edilir,
-// iframe içindeki pdfQrInitScript() canvas'a çizer.
+// ---- QR kod: rapor için derin bağlantı URL'si ----
+// Telefon/tablet kamerasıyla taranınca tarayıcıda uygulamayı açar ve
+// ?rapor= parametresi sayesinde login sonrası ilgili raporun PDF
+// önizlemesi otomatik olarak gösterilir.
+const QR_BASE_URL = 'https://ismmetroloji.netlify.app/';
+
 function _buildRaporQrText(r) {
-  if (!r) return '';
-  const cihazLabel = (typeof vrDevLabel === 'function')
-    ? vrDevLabel(r.devType)
-    : (r.devType || '—');
-  const tarihStr = (typeof pdfDate === 'function')
-    ? pdfDate(r.uygulamaTarihi || r.raporTarihi)
-    : String(r.uygulamaTarihi || r.raporTarihi || '—');
-  const sonuc = r.genelSonuc || r.sonuc || '—';
-  return [
-    'Rapor No: '      + (r.raporNo || '—'),
-    'Cihaz: '         + (cihazLabel || '—'),
-    'Marka/Model: '   + (r.marka || '—') + ' / ' + (r.model || '—'),
-    'Sağlık Tesisi: ' + (r.saglikTesisi || '—'),
-    'Tarih: '         + (tarihStr || '—'),
-    'Sonuç: '         + sonuc,
-    'Teknisyen: '     + (r.testiUygulayan || '—')
-  ].join('\n');
+  if (!r || !r.raporNo) return QR_BASE_URL;
+  return QR_BASE_URL + '?rapor=' + encodeURIComponent(r.raporNo);
 }
 
 function pdfBildirim() {
@@ -9236,7 +9294,7 @@ function pdfBildirim() {
   const qrHtml =
     '<div class="pf-qr">' +
       '<div class="pf-qr-canvas" data-qr="' + qrEncoded + '"></div>' +
-      '<div class="pf-qr-label">Rapor Bilgisi</div>' +
+      '<div class="pf-qr-label">Raporu Görüntüle</div>' +
     '</div>';
   return '' +
     '<div class="pdf-footer">' +
@@ -10442,6 +10500,7 @@ function initPressFeedback() {
 // =====================================================
 // BAŞLANGIÇ
 // =====================================================
+_readDeepLinkRapor();   // QR'dan ?rapor=... varsa yakala (login'den önce)
 renderDots();
 initSplash();
 initPressFeedback();
