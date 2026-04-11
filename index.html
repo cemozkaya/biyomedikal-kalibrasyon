@@ -9029,7 +9029,10 @@ async function sendForApproval() {
         rapor:   currentRapor
       });
       if (!res.ok) {
-        alert('Yeniden gönderim başarısız: ' + (res.error || 'bilinmeyen hata'));
+        const msg = res.error === 'forbidden'
+          ? 'Bu rapor başka bir kullanıcıya ait — yeniden gönderme yetkiniz yok.'
+          : (res.error || 'bilinmeyen hata');
+        alert('Yeniden gönderim başarısız: ' + msg);
         return;
       }
       _prepareResubmit(currentRapor);
@@ -9051,7 +9054,10 @@ async function sendForApproval() {
       rapor: currentRapor
     });
     if (!res.ok) {
-      alert('Gönderim başarısız: ' + (res.error || 'bilinmeyen hata'));
+      const msg = res.error === 'forbidden'
+        ? 'Bu rapor başka bir kullanıcıya ait — onaya gönderme yetkiniz yok.'
+        : (res.error || 'bilinmeyen hata');
+      alert('Gönderim başarısız: ' + msg);
       return;
     }
     // Sunucu tarafında üretilen final rapor numarası
