@@ -283,6 +283,8 @@ html, body {
   align-items: center;
   gap: 10px;
   min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 .menu-topbar .brand .topbar-logo {
   width: 36px;
@@ -294,24 +296,34 @@ html, body {
 .menu-topbar .brand .brand-text {
   display: flex;
   flex-direction: column;
-  line-height: 1.2;
+  justify-content: center;
+  height: 36px;
+  line-height: 1.15;
   min-width: 0;
+  overflow: hidden;
 }
 .menu-topbar .brand .name {
   font-weight: 700;
   color: var(--text);
   font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .menu-topbar .brand .sub {
   font-size: 0.62rem;
   color: var(--text3);
   letter-spacing: 0.5px;
   text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .menu-topbar .right {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 .profile-btn {
   background: var(--surf);
@@ -480,10 +492,23 @@ html, body {
 }
 
 /* ---------- Menü düzenleme modu (iPhone tarzı wiggle + drag) ---------- */
+.card-grid.edit-mode {
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.card-grid.edit-mode .menu-card,
+.card-grid.edit-mode .menu-card * {
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
 .card-grid.edit-mode .menu-card {
   animation: cardWiggle 0.32s ease-in-out infinite alternate;
   cursor: grab;
-  user-select: none;
+  touch-action: none;
 }
 .card-grid.edit-mode .menu-card:active { transform: none; box-shadow: none; }
 .card-grid.edit-mode .menu-card.dragging {
@@ -2141,7 +2166,7 @@ html, body {
       <img class="topbar-logo" src="icon-512.png" alt="">
       <div class="brand-text">
         <span class="name">Hatay İSM</span>
-        <span class="sub">Biyomedikal Kalibrasyon</span>
+        <span class="sub">Biyomedikal Metroloji</span>
       </div>
     </div>
     <div class="right">
@@ -10040,6 +10065,7 @@ function ensureMenuDragInit() {
 
   grid.addEventListener('pointermove', (e) => {
     if (!dragEl) return;
+    e.preventDefault();
     const dx = e.clientX - startX;
     const dy = e.clientY - startY;
     if (!moved && Math.hypot(dx, dy) < 4) return;
