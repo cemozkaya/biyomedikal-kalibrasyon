@@ -2175,6 +2175,8 @@ html, body {
 <!-- pgVeriler için — Excel export ve toplu PDF zip -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<!-- QR kod üretimi (rapor PDF'lerinde kullanılır) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -3735,8 +3737,17 @@ const SEEN_KEYS = {
 //   2) CHANGELOG'un EN ÜSTÜNE yeni bir girdi ekle
 // Login sonrası, kullanıcı daha önce bu sürümü görmediyse popup açılır.
 // =====================================================
-const APP_VERSION = '2026.04.11';
+const APP_VERSION = '2026.04.11.2';
 const CHANGELOG = [
+  {
+    version: '2026.04.11.2',
+    title: 'Sürüm 11 Nisan 2026 (2)',
+    items: [
+      'Rapor PDF\'lerine QR kod eklendi — her sayfanın sağ alt köşesinde, bildirim metninin yanında',
+      'QR kod rapor no, cihaz, marka/model, sağlık tesisi, tarih, sonuç ve teknisyen bilgilerini içerir',
+      'Demo modunda da QR kod üretilir'
+    ]
+  },
   {
     version: '2026.04.11',
     title: 'Sürüm 11 Nisan 2026',
@@ -9140,13 +9151,82 @@ function pdfHeader(sayfaNo) {
     '<div class="pdf-hline"></div>';
 }
 
+// ---- QR kod: rapor bilgilerini taşıyan PNG dataURL üretir ----
+// Her raporNo için cache'lenir; toplu PDF'te currentRapor değiştikçe yeniden üretilir.
+let _pdfQrCache = { raporNo: null, dataUrl: '' };
+
+function _buildRaporQrText(r) {
+  if (!r) return '';
+  const cihazLabel = (typeof vrDevLabel === 'function')
+    ? vrDevLabel(r.devType)
+    : (r.devType || '—');
+  const tarihStr = (typeof pdfDate === 'function')
+    ? pdfDate(r.uygulamaTarihi || r.raporTarihi)
+    : String(r.uygulamaTarihi || r.raporTarihi || '—');
+  const sonuc = r.genelSonuc || r.sonuc || '—';
+  return [
+    'Rapor No: '      + (r.raporNo || '—'),
+    'Cihaz: '         + (cihazLabel || '—'),
+    'Marka/Model: '   + (r.marka || '—') + ' / ' + (r.model || '—'),
+    'Sağlık Tesisi: ' + (r.saglikTesisi || '—'),
+    'Tarih: '         + (tarihStr || '—'),
+    'Sonuç: '         + sonuc,
+    'Teknisyen: '     + (r.testiUygulayan || '—')
+  ].join('\n');
+}
+
+function buildRaporQrDataUrl(r) {
+  if (!r) return '';
+  if (_pdfQrCache.raporNo === r.raporNo && _pdfQrCache.dataUrl) return _pdfQrCache.dataUrl;
+  _pdfQrCache = { raporNo: r.raporNo || null, dataUrl: '' };
+  if (typeof QRCode === 'undefined') return ''; // Kütüphane yüklenmemişse sessizce atla
+  try {
+    const holder = document.createElement('div');
+    holder.style.cssText = 'position:absolute;left:-9999px;top:0;width:0;height:0;overflow:hidden;';
+    document.body.appendChild(holder);
+    // qrcodejs v1.0.0 — canvas + img oluşturur
+    new QRCode(holder, {
+      text: _buildRaporQrText(r),
+      width: 160,   // yüksek çözünürlük, PDF'te 80x80 px olarak render olur
+      height: 160,
+      colorDark:  '#000000',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+    let dataUrl = '';
+    const canvas = holder.querySelector('canvas');
+    if (canvas && typeof canvas.toDataURL === 'function') {
+      dataUrl = canvas.toDataURL('image/png');
+    } else {
+      const img = holder.querySelector('img');
+      if (img && img.src) dataUrl = img.src;
+    }
+    document.body.removeChild(holder);
+    _pdfQrCache.dataUrl = dataUrl;
+    return dataUrl;
+  } catch (e) {
+    console.error('QR üretim hatası:', e);
+    return '';
+  }
+}
+
 function pdfBildirim() {
+  const qrUrl = buildRaporQrDataUrl(currentRapor);
+  const qrHtml = qrUrl
+    ? ('<div class="pf-qr">' +
+         '<img src="' + qrUrl + '" alt="QR">' +
+         '<div class="pf-qr-label">Rapor Bilgisi</div>' +
+       '</div>')
+    : '';
   return '' +
     '<div class="pdf-footer">' +
-      '<div>Bu rapor kapak sayfası dahil toplam 6 sayfadan ibarettir. Yukarıda künye bilgileri belirtilen biyomedikal donanıma özel düzenlenmiştir.</div>' +
-      '<div>Mühürsüz, elektronik imzasız veya ıslak imzasız suretlerinin geçerliliği bulunmamaktadır.</div>' +
-      '<div>Bu rapor kısmi parçalar halinde kullanılamaz, değerlendirilemez.</div>' +
-      '<div>Bu rapor sorumlu kurum yönetiminin bilgisi dışında paylaşılamaz, dağıtılamaz, kısmen dahi olsa kullanılamaz.</div>' +
+      '<div class="pf-text">' +
+        '<div>Bu rapor kapak sayfası dahil toplam 6 sayfadan ibarettir. Yukarıda künye bilgileri belirtilen biyomedikal donanıma özel düzenlenmiştir.</div>' +
+        '<div>Mühürsüz, elektronik imzasız veya ıslak imzasız suretlerinin geçerliliği bulunmamaktadır.</div>' +
+        '<div>Bu rapor kısmi parçalar halinde kullanılamaz, değerlendirilemez.</div>' +
+        '<div>Bu rapor sorumlu kurum yönetiminin bilgisi dışında paylaşılamaz, dağıtılamaz, kısmen dahi olsa kullanılamaz.</div>' +
+      '</div>' +
+      qrHtml +
     '</div>';
 }
 
@@ -9836,9 +9916,22 @@ function pdfStyle() {
       'background: rgba(200,16,46,.04);' +
       'font-family: Georgia, serif; font-style: italic;' +
       'flex: 0 0 auto;' +
+      'display: flex; align-items: center; gap: 8px;' +
     '}' +
-    '.pdf-footer div { margin: 0.5px 0; }' +
-    '.pdf-footer div:first-child { font-weight: bold; font-style: normal; color: #8B0A1A; }' +
+    '.pdf-footer .pf-text { flex: 1 1 auto; min-width: 0; }' +
+    '.pdf-footer .pf-text > div { margin: 0.5px 0; }' +
+    '.pdf-footer .pf-text > div:first-child { font-weight: bold; font-style: normal; color: #8B0A1A; }' +
+    '.pdf-footer .pf-qr {' +
+      'flex: 0 0 auto; display: flex; flex-direction: column; align-items: center;' +
+      'background: #ffffff; padding: 3px; border: 1px solid #e0d6cc; border-radius: 3px;' +
+    '}' +
+    '.pdf-footer .pf-qr img, .pdf-footer .pf-qr canvas {' +
+      'width: 80px; height: 80px; display: block;' +
+    '}' +
+    '.pdf-footer .pf-qr .pf-qr-label {' +
+      'font-size: 5pt; color: #5a3a3a; font-style: normal; font-family: Arial, sans-serif;' +
+      'margin-top: 2px; letter-spacing: 0.2px;' +
+    '}' +
 
     /* ========== PRINT ========== */
     '@media print {' +
