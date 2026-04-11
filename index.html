@@ -3737,14 +3737,15 @@ const SEEN_KEYS = {
 //   2) CHANGELOG'un EN ÜSTÜNE yeni bir girdi ekle
 // Login sonrası, kullanıcı daha önce bu sürümü görmediyse popup açılır.
 // =====================================================
-const APP_VERSION = '2026.04.12';
+const APP_VERSION = '2026.04.12.2';
 const CHANGELOG = [
   {
-    version: '2026.04.12',
-    title: 'Sürüm 12 Nisan 2026',
+    version: '2026.04.12.2',
+    title: 'Sürüm 12 Nisan 2026 (2)',
     items: [
       'Yarım Kalanlar listesi artık herkese sadece kendi taslaklarını gösterir (yalnızca yönetici tüm teknisyenlerin taslaklarını görebilir)',
-      'Onaya gönderme sırasında başka kullanıcıya ait bir rapor seçilirse daha açıklayıcı mesaj gösterilir'
+      'Onaya gönderme sırasında başka kullanıcıya ait bir rapor seçilirse daha açıklayıcı mesaj gösterilir',
+      'Veriler ve diğer listelerde "yeni satır" vurgulaması artık durum değişikliklerinde de çalışır: bir taslak onaya gönderildiğinde, onaylandığında, reddedildiğinde veya revizyon istendiğinde ilgili sayfada o rapor "● YENİ" olarak işaretlenir'
     ]
   },
   {
@@ -3846,6 +3847,32 @@ function computeAndMarkNewRows(key, list) {
     } catch (_) {}
   }
   return newSet;
+}
+
+// Bir raporu tüm sayfa seen listelerinden çıkarır.
+// Onaylama, reddetme, revizyon, onaya gönderme gibi DURUM DEĞİŞİKLİKLERİNDE çağrılır:
+// raporNo aynı kalsa da kullanıcının bir sonraki ziyaretinde yeniden "yeni" olarak
+// vurgulanması istenir. Aksi halde raporNo zaten seen'de olduğu için vurgulanmaz.
+function markRaporAsUnseen(raporNo) {
+  if (!raporNo) return;
+  Object.keys(SEEN_KEYS).forEach(k => {
+    const key = SEEN_KEYS[k];
+    if (isDemo) {
+      const set = _demoSeen[key];
+      if (set instanceof Set) set.delete(raporNo);
+    } else {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return;
+        const arr = JSON.parse(raw);
+        if (!Array.isArray(arr)) return;
+        const filtered = arr.filter(no => String(no) !== String(raporNo));
+        if (filtered.length !== arr.length) {
+          localStorage.setItem(key, JSON.stringify(filtered));
+        }
+      } catch (_) {}
+    }
+  });
 }
 
 // ---------- DEMO RAPOR FABRİKASI ----------
@@ -5831,6 +5858,9 @@ async function onApplyDecision(raporNo, decision, note, suppressToast) {
     // filtreli olduğu için ondan slice etmek diğer raporları kaybettiriyordu.
     vrAllRaporlar = DEMO_RAPORLAR.slice();
   }
+
+  // Durum değişikliği oldu → bu rapor diğer sayfalarda "yeni" olarak vurgulansın
+  markRaporAsUnseen(raporNo);
 
   // Gerçek modda backend'e gönder
   if (!isDemo && currentUser) {
@@ -9048,6 +9078,8 @@ async function sendForApproval() {
       currentRapor.kaydedildi = true;
       // Bellek cache'i optimistik güncelle: badge'ler ve listeler taze görünsün
       _vrUpsertRapor(currentRapor);
+      // Yeniden gönderildi → diğer sayfalarda "yeni" olarak vurgulansın
+      markRaporAsUnseen(currentRapor.raporNo);
       renderStep();
     } catch (err) {
       alert('Sunucuya ulaşılamadı: ' + err.message);
@@ -9077,6 +9109,10 @@ async function sendForApproval() {
     // Bellek cache'i optimistik güncelle: ana menüye dönüş ve veriler/onay
     // sekmeleri taze veri için backend'i beklemesin
     _vrUpsertRapor(currentRapor, oldRaporNo);
+    // Onaya gönderildi → diğer sayfalarda "yeni" olarak vurgulansın
+    // (eski raporNo da varsa onu da temizle, çünkü submit sırasında değişebilir)
+    if (oldRaporNo && oldRaporNo !== currentRapor.raporNo) markRaporAsUnseen(oldRaporNo);
+    markRaporAsUnseen(currentRapor.raporNo);
     renderStep();
   } catch (err) {
     alert('Sunucuya ulaşılamadı: ' + err.message);
