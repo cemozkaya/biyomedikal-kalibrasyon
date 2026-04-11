@@ -143,6 +143,7 @@ function doPost(e) {
     if (action === 'updateUser')    return jsonOut(handleUpdateUser(body));
     if (action === 'deleteUser')    return jsonOut(handleDeleteUser(body));
     if (action === 'resetUserPin')  return jsonOut(handleResetUserPin(body));
+    if (action === 'changeOwnPin')  return jsonOut(handleChangeOwnPin(body));
 
     // Referans cihazlar
     if (action === 'listRefCihazlar')  return jsonOut(handleListRefCihazlar(body));
@@ -928,6 +929,34 @@ function handleResetUserPin(body) {
     const tcCol = headers.indexOf('tc');
     for (let i = 1; i < data.length; i++) {
       if (String(data[i][tcCol]) === String(body.targetTc)) {
+        sheet.getRange(i + 1, headers.indexOf('pin') + 1).setValue(body.newPin);
+        return { ok: true };
+      }
+    }
+    return { ok: false, error: 'user_not_found' };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Kullanıcı kendi PIN'ini değiştirir. body.tc + body.pin (eski) doğrulanır,
+// body.newPin yeni 4 haneli PIN olarak yazılır.
+function handleChangeOwnPin(body) {
+  const user = findUser_(body.tc, body.pin);
+  if (!user) return { ok: false, error: 'unauthorized' };
+  if (!body.newPin) return { ok: false, error: 'eksik_alan' };
+  if (!/^\d{4}$/.test(String(body.newPin))) return { ok: false, error: 'pin_format' };
+  if (String(body.newPin) === String(body.pin)) return { ok: false, error: 'ayni_pin' };
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const sheet = getSheet_('Kullanicilar');
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String);
+    const data = sheet.getDataRange().getValues();
+    const tcCol = headers.indexOf('tc');
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][tcCol]) === String(body.tc)) {
         sheet.getRange(i + 1, headers.indexOf('pin') + 1).setValue(body.newPin);
         return { ok: true };
       }

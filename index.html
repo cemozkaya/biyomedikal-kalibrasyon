@@ -214,6 +214,7 @@ html, body {
 .btn-primary   { background: var(--accent); color: #fff; }
 .btn-secondary { background: var(--surf); color: var(--text); border: 1px solid var(--border); }
 .btn-ghost     { background: transparent; color: var(--text2); border: 1px solid var(--border); }
+.btn-danger    { background: rgba(229, 72, 77, 0.15); color: #e5484d; border: 1px solid rgba(229, 72, 77, 0.5); }
 
 .error-msg {
   background: rgba(229, 72, 77, 0.12);
@@ -491,6 +492,74 @@ html, body {
 }
 .popup .role-row { margin-bottom: 14px; }
 .popup .btn { font-size: 0.85rem; padding: 10px; }
+.popup .btn + .btn { margin-top: 8px; }
+
+/* "Beni hatırla" satırı (login) */
+.remember-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 14px;
+  font-size: 0.85rem;
+  color: var(--text2);
+  cursor: pointer;
+  user-select: none;
+}
+.remember-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* PIN değiştir popup'ı (profile popup yapısını paylaşır) */
+.pin-change-popup .pin-input-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.pin-change-popup .pin-input-row label {
+  font-size: 0.78rem;
+  color: var(--text2);
+}
+.pin-change-popup input[type="password"] {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 1.1rem;
+  font-family: monospace;
+  letter-spacing: 0.4em;
+  padding: 10px 12px;
+  text-align: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+.pin-change-popup input[type="password"]:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.pin-change-popup .pin-error {
+  background: rgba(229, 72, 77, 0.12);
+  border: 1px solid var(--red, #e5484d);
+  color: var(--red, #e5484d);
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  text-align: center;
+  margin-bottom: 10px;
+}
+.pin-change-popup .pin-success {
+  background: rgba(46, 160, 67, 0.12);
+  border: 1px solid #2ea043;
+  color: #2ea043;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  text-align: center;
+  margin-bottom: 10px;
+}
 
 /* ========== STUB SAYFALAR ========== */
 .stub-header {
@@ -789,6 +858,79 @@ html, body {
   text-align: center; padding: 16px;
   color: var(--text3); font-size: 0.85rem;
 }
+
+/* ===== "YENİ" SATIR / KART VURGUSU =====
+   Sayfa açıldığında, son ziyaretten sonra eklenen raporları belirgin
+   gösterir. Sayfa yeniden açılınca işaret kaybolur (seen list güncellenir). */
+.vr-row-new td {
+  background: rgba(255, 193, 7, 0.18) !important;
+  animation: vrNewPulse 2.2s ease-in-out infinite;
+}
+.vr-row-new td:first-child {
+  box-shadow: inset 4px 0 0 0 #f5b400;
+}
+.vr-card-new, .yk-card-new {
+  outline: 2px solid #f5b400 !important;
+  background: rgba(255, 193, 7, 0.10) !important;
+  position: relative;
+  animation: vrNewPulse 2.2s ease-in-out infinite;
+}
+@keyframes vrNewPulse {
+  0%, 100% { background-color: rgba(255, 193, 7, 0.12); }
+  50%      { background-color: rgba(255, 193, 7, 0.28); }
+}
+.vr-new-tag {
+  display: inline-block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #fff;
+  background: #f5b400;
+  padding: 2px 6px;
+  border-radius: 10px;
+  letter-spacing: 0.4px;
+  vertical-align: middle;
+  margin-right: 6px;
+  box-shadow: 0 0 0 2px rgba(245, 180, 0, 0.25);
+}
+
+/* GLOBAL LOADING OVERLAY — sayfa geçişlerinde ve veri yüklenirken gösterilir */
+#loadingOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+#loadingOverlay.hidden { display: none; }
+#loadingOverlay .lo-box {
+  background: var(--surface, #fff);
+  padding: 22px 32px;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  min-width: 160px;
+}
+#loadingOverlay .lo-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(0, 0, 0, 0.12);
+  border-top-color: var(--accent, #c62828);
+  border-radius: 50%;
+  animation: loSpinRot 0.8s linear infinite;
+}
+#loadingOverlay .lo-text {
+  font-size: 0.9rem;
+  color: var(--text2, #333);
+  font-weight: 500;
+}
+@keyframes loSpinRot { to { transform: rotate(360deg); } }
 .vr-empty {
   text-align: center; padding: 40px 20px;
   color: var(--text3); font-size: 0.9rem;
@@ -1897,6 +2039,12 @@ html, body {
     </div>
 
     <div class="error-msg hidden" id="loginError">Hatalı giriş</div>
+
+    <label class="remember-row">
+      <input type="checkbox" id="rememberLogin">
+      <span>Beni bu cihazda hatırla (otomatik giriş)</span>
+    </label>
+
     <button class="btn btn-primary" onclick="login()">Giriş Yap</button>
 
     <div class="recent-tcs hidden" id="recentTcs">
@@ -2355,7 +2503,40 @@ html, body {
     <div class="name" id="popupName">—</div>
     <div class="unvan" id="popupUnvan">—</div>
     <div class="role-row"><span class="role-badge" id="popupBadge">—</span></div>
-    <button class="btn btn-secondary" onclick="changePin()">PIN Değiştir</button>
+    <button class="btn btn-secondary" onclick="changePin()">🔑 PIN Değiştir</button>
+    <button class="btn btn-danger" onclick="logoutFromProfile()">🚪 Çıkış Yap</button>
+  </div>
+</div>
+
+<!-- ================= PIN DEĞİŞTİR POPUP ================= -->
+<div class="popup-backdrop hidden" id="pinChangePopup" onclick="closePinChangeIfBackdrop(event)">
+  <div class="popup pin-change-popup">
+    <div class="name">🔑 PIN Değiştir</div>
+    <div class="unvan">4 haneli yeni PIN belirleyin</div>
+    <div class="pin-error hidden" id="pinChangeError"></div>
+    <div class="pin-success hidden" id="pinChangeSuccess"></div>
+    <div class="pin-input-row">
+      <label>Mevcut PIN</label>
+      <input type="password" maxlength="4" id="pinOld" inputmode="numeric" autocomplete="off" pattern="\d*">
+    </div>
+    <div class="pin-input-row">
+      <label>Yeni PIN</label>
+      <input type="password" maxlength="4" id="pinNew1" inputmode="numeric" autocomplete="off" pattern="\d*">
+    </div>
+    <div class="pin-input-row">
+      <label>Yeni PIN (tekrar)</label>
+      <input type="password" maxlength="4" id="pinNew2" inputmode="numeric" autocomplete="off" pattern="\d*">
+    </div>
+    <button class="btn btn-primary" onclick="submitPinChange()">Değiştir</button>
+    <button class="btn btn-secondary" onclick="closePinChange()">İptal</button>
+  </div>
+</div>
+
+<!-- Global yükleniyor overlay'i — panel/form açılışlarında gösterilir -->
+<div id="loadingOverlay" class="hidden">
+  <div class="lo-box">
+    <div class="lo-spinner"></div>
+    <div class="lo-text">Yükleniyor…</div>
   </div>
 </div>
 
@@ -2420,6 +2601,8 @@ function showPage(id) {
 }
 
 function goBackToMenu() {
+  // "Yeni Cihaz" zincirinden çıkıldı sayılır → ortak alan taşımayı iptal et
+  if (typeof _carryNextRapor !== 'undefined') _carryNextRapor = null;
   setupMenu();
   showPage('pgMenu');
 }
@@ -2428,9 +2611,15 @@ function goBackToMenu() {
 // SPLASH → LOGIN
 // =====================================================
 function initSplash() {
-  setTimeout(() => {
+  setTimeout(async () => {
     showPage('pgLogin');
     renderRecentTcs();
+    // "Beni hatırla" kaydı varsa otomatik giriş dene; başarısızsa login formunda kal
+    if (loadRememberedLogin()) {
+      const cb = document.getElementById('rememberLogin');
+      if (cb) cb.checked = true;
+      await tryAutoLogin();
+    }
   }, SPLASH_DURATION_MS);
 }
 
@@ -2508,9 +2697,69 @@ async function login() {
     isDemo = false;
     hideError();
     rememberTc(tcBuffer);
+    // "Beni hatırla" işaretliyse TC + PIN'i localStorage'a kaydet → sonraki açılışta auto-login
+    const rememberCb = document.getElementById('rememberLogin');
+    if (rememberCb && rememberCb.checked) {
+      saveRememberedLogin(tcBuffer, pinBuffer);
+    } else {
+      clearRememberedLogin();
+    }
     goAfterLogin();
   } catch (err) {
     showError('Sunucuya ulaşılamadı: ' + err.message);
+  }
+}
+
+// =====================================================
+// "BENİ HATIRLA" — otomatik giriş
+// =====================================================
+const REMEMBER_KEY = 'bmk_remember_login';
+
+function saveRememberedLogin(tc, pin) {
+  try {
+    // Basit obfuscation: base64. Tarayıcı erişen biri görür — kullanıcı bilinçli tercih.
+    const payload = btoa(JSON.stringify({ tc: tc, pin: pin, at: Date.now() }));
+    localStorage.setItem(REMEMBER_KEY, payload);
+  } catch (_) {}
+}
+
+function loadRememberedLogin() {
+  try {
+    const raw = localStorage.getItem(REMEMBER_KEY);
+    if (!raw) return null;
+    const obj = JSON.parse(atob(raw));
+    if (obj && obj.tc && obj.pin) return obj;
+  } catch (_) {}
+  return null;
+}
+
+function clearRememberedLogin() {
+  try { localStorage.removeItem(REMEMBER_KEY); } catch (_) {}
+}
+
+// Splash sonrası: hatırlanan login varsa otomatik giriş dene
+async function tryAutoLogin() {
+  const remembered = loadRememberedLogin();
+  if (!remembered) return false;
+  showError('Otomatik giriş yapılıyor...');
+  try {
+    const res = await apiCall('login', { tc: remembered.tc, pin: remembered.pin });
+    if (!res.ok) {
+      // Eski kayıt geçersiz → temizle ve normal login'e dön
+      clearRememberedLogin();
+      hideError();
+      return false;
+    }
+    currentUser = Object.assign({}, res.user, { pin: remembered.pin });
+    isDemo = false;
+    hideError();
+    rememberTc(remembered.tc);
+    goAfterLogin();
+    return true;
+  } catch (err) {
+    // Sunucu yoksa otomatik girişi atla, kullanıcı manuel deneyebilir
+    hideError();
+    return false;
   }
 }
 
@@ -2638,53 +2887,64 @@ function getPendingApprovals() {
   }).length;
 }
 
-// Teknisyen bildirimleri — onaylanan/reddedilen/revizyon istenenlerden
+// Veriler kartı bildirim sayıları — onaylanan/reddedilen/revizyon istenenlerden
 // "son ziyaretten beri yeni" olanları sayar.
-// Demo modda DEMO_RAPORLAR'dan, gerçek modda vrAllRaporlar cache'inden
-// hesaplanır. localStorage'da per-teknisyen "son görme" tarihi tutulur.
+// Teknisyen → sadece kendi raporları, müdür/yönetici/demo → tüm raporlar
+// (demo modundaki davranışla tutarlı olsun diye gerçek modda da yönetici/
+// müdür rollerinde badge gösteriyoruz).
+// Veri kaynağı: önce in-memory vrAllRaporlar, sonra localStorage cache fallback.
 function getTechNotifications() {
   if (!currentUser) return { approved: 0, rejected: 0, revision: 0 };
-  // Yönetici/müdür bu bildirimleri görmez
-  const role = getPrimaryRole();
-  if (role !== 'teknisyen' && role !== 'demo') {
-    return { approved: 0, rejected: 0, revision: 0 };
-  }
 
   let raporlar = [];
   if (isDemo && DEMO_RAPORLAR) {
     raporlar = DEMO_RAPORLAR;
+  } else if (typeof vrAllRaporlar !== 'undefined' && vrAllRaporlar.length) {
+    raporlar = vrAllRaporlar;
   } else {
     try { raporlar = JSON.parse(localStorage.getItem(VR_LS && VR_LS.cache || 'bmk_vr_cache') || '{}').data || []; }
     catch (_) { raporlar = []; }
   }
 
-  // Demo modunda kullanıcı tüm raporları görür → kendi raporu yerine
-  // tüm raporlar üzerinden bildirim hesapla (demo gösterim için)
+  // Rol bazlı filtre: teknisyen sadece kendi raporlarına gelen kararları görsün,
+  // yönetici/müdür/demo tüm raporlar üzerinden hesaplasın.
+  const role = getPrimaryRole();
   let mine;
-  if (isDemo) {
-    mine = raporlar;
-  } else {
+  if (role === 'teknisyen' && currentUser.ad) {
     mine = raporlar.filter(r => r.testiUygulayan === currentUser.ad);
+  } else {
+    mine = raporlar;
   }
 
-  // Son görülme tarihi
-  const seenKey = 'bmk_notif_seen_' + (currentUser.tc || 'demo');
+  // "Son görülme" filtresi sadece teknisyen için anlamlı (kendi raporuna gelen
+  // YENİ cevapları görsün). Yönetici/müdür/demo için bu filtre devre dışı —
+  // tüm karar verilmiş raporlar her zaman gösterilir, aksi halde kullanıcı
+  // bir kez kart tıklayınca lastSeen = now olup badge sıfırlanıyordu.
   let lastSeen = 0;
-  try { lastSeen = parseInt(localStorage.getItem(seenKey) || '0', 10) || 0; } catch (_) {}
+  if (role === 'teknisyen') {
+    const seenKey = 'bmk_notif_seen_' + (currentUser.tc || 'demo');
+    try { lastSeen = parseInt(localStorage.getItem(seenKey) || '0', 10) || 0; } catch (_) {}
+  }
 
-  // Eğer hiç görmemişse → tüm karar verilmiş raporlar bildirimdir
-  // (demo açılış davranışı ikna edici)
-  let approved = 0, rejected = 0, revision = 0;
+  let approved = 0, rejected = 0, revision = 0, pending = 0;
   mine.forEach(r => {
-    const decideDate = r.onayTarihi || r.redTarihi || r.revizyonTarihi;
-    if (!decideDate) return;
-    const t = new Date(decideDate).getTime();
-    if (t < lastSeen) return;
-    if (r.onayDurumu === 'approved') approved++;
+    if      (r.onayDurumu === 'approved') approved++;
     else if (r.onayDurumu === 'rejected') rejected++;
     else if (r.onayDurumu === 'revision') revision++;
+    else if (r.onayDurumu === 'pending')  pending++;
+    else return;
+    // Teknisyen için "yeni" filtresi — karar tarihi lastSeen'den eskiyse geri al.
+    // pending raporlar lastSeen filtresinden etkilenmez (henüz karar yok).
+    if (lastSeen > 0 && r.onayDurumu !== 'pending') {
+      const decideDate = r.onayTarihi || r.redTarihi || r.revizyonTarihi;
+      if (!decideDate || new Date(decideDate).getTime() < lastSeen) {
+        if      (r.onayDurumu === 'approved') approved--;
+        else if (r.onayDurumu === 'rejected') rejected--;
+        else if (r.onayDurumu === 'revision') revision--;
+      }
+    }
   });
-  return { approved, rejected, revision };
+  return { approved, rejected, revision, pending };
 }
 
 function markNotificationsSeen() {
@@ -2712,21 +2972,23 @@ function buildMenuCards() {
     badge: getDraftCount()
   });
 
-  // Veriler kartı + teknisyen bildirim badge'leri
+  // Veriler kartı + bildirim badge'leri (pending dahil tüm raporlar)
   const notif = getTechNotifications();
-  const totalNotif = notif.approved + notif.rejected + notif.revision;
+  const totalNotif = notif.approved + notif.rejected + notif.revision + (notif.pending || 0);
   let verilerBadgeCls = '';
   if (totalNotif > 0) {
     if (notif.rejected > 0)      verilerBadgeCls = 'notif-red notif-pulse';
     else if (notif.revision > 0) verilerBadgeCls = 'notif-purple notif-pulse';
+    else if (notif.pending > 0)  verilerBadgeCls = 'notif-yellow';
     else                          verilerBadgeCls = 'notif-green';
   }
   cards.push({
     icon: '📊', title: 'Veriler',
     desc: totalNotif > 0
-      ? (notif.approved ? `✅ ${notif.approved} onaylandı  ` : '') +
-        (notif.rejected ? `❌ ${notif.rejected} reddedildi  ` : '') +
-        (notif.revision ? `🔄 ${notif.revision} revizyon`     : '')
+      ? (notif.approved ? `✅ ${notif.approved} onaylı  `    : '') +
+        (notif.pending  ? `⏳ ${notif.pending} bekliyor  `   : '') +
+        (notif.rejected ? `❌ ${notif.rejected} reddedildi  `: '') +
+        (notif.revision ? `🔄 ${notif.revision} revizyon`    : '')
       : 'Tüm cihaz kayıtları',
     action: "goVeriler()",
     badge: totalNotif,
@@ -3069,9 +3331,88 @@ function closeProfileIfBackdrop(e) {
   if (e.target.id === 'profilePopup') closeProfile();
 }
 
+// =====================================================
+// PROFİLDEN ÇIKIŞ
+// =====================================================
+function logoutFromProfile() {
+  closeProfile();
+  if (isDemo) { exitDemo(); return; }
+  logout();
+}
+
+// =====================================================
+// PIN DEĞİŞTİR
+// =====================================================
 function changePin() {
-  // TODO: PIN değiştirme ekranı
-  alert('PIN değiştirme yakında eklenecek');
+  if (isDemo) {
+    alert('Demo modunda PIN değiştirilemez.');
+    return;
+  }
+  if (!currentUser || !currentUser.pin) {
+    alert('Oturum bilgisi eksik. Lütfen tekrar giriş yapın.');
+    return;
+  }
+  closeProfile();
+  // Form alanlarını temizle
+  document.getElementById('pinOld').value  = '';
+  document.getElementById('pinNew1').value = '';
+  document.getElementById('pinNew2').value = '';
+  document.getElementById('pinChangeError').classList.add('hidden');
+  document.getElementById('pinChangeSuccess').classList.add('hidden');
+  document.getElementById('pinChangePopup').classList.remove('hidden');
+  setTimeout(() => { try { document.getElementById('pinOld').focus(); } catch (_) {} }, 60);
+}
+
+function closePinChange() {
+  document.getElementById('pinChangePopup').classList.add('hidden');
+}
+
+function closePinChangeIfBackdrop(e) {
+  if (e.target.id === 'pinChangePopup') closePinChange();
+}
+
+function _showPinChangeError(msg) {
+  const el = document.getElementById('pinChangeError');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  document.getElementById('pinChangeSuccess').classList.add('hidden');
+}
+
+async function submitPinChange() {
+  const oldPin  = (document.getElementById('pinOld').value  || '').trim();
+  const newPin1 = (document.getElementById('pinNew1').value || '').trim();
+  const newPin2 = (document.getElementById('pinNew2').value || '').trim();
+
+  if (!/^\d{4}$/.test(oldPin))  return _showPinChangeError('Mevcut PIN 4 hane olmalı');
+  if (!/^\d{4}$/.test(newPin1)) return _showPinChangeError('Yeni PIN 4 hane olmalı');
+  if (newPin1 !== newPin2)       return _showPinChangeError('Yeni PIN tekrarı eşleşmiyor');
+  if (oldPin === newPin1)        return _showPinChangeError('Yeni PIN mevcut PIN ile aynı');
+  if (oldPin !== currentUser.pin) return _showPinChangeError('Mevcut PIN hatalı');
+
+  try {
+    const res = await apiCall('changeOwnPin', {
+      tc:     currentUser.tc,
+      pin:    oldPin,
+      newPin: newPin1
+    });
+    if (!res.ok) {
+      const msg = res.error === 'ayni_pin'   ? 'Yeni PIN mevcut PIN ile aynı'
+                : res.error === 'pin_format' ? 'PIN formatı geçersiz'
+                : res.error === 'unauthorized' ? 'Mevcut PIN hatalı'
+                : 'PIN değiştirilemedi: ' + (res.error || 'bilinmeyen hata');
+      return _showPinChangeError(msg);
+    }
+    // Başarılı: bellekte ve "beni hatırla" kaydında PIN'i güncelle
+    currentUser.pin = newPin1;
+    if (loadRememberedLogin()) saveRememberedLogin(currentUser.tc, newPin1);
+    document.getElementById('pinChangeError').classList.add('hidden');
+    const ok = document.getElementById('pinChangeSuccess');
+    ok.textContent = '✅ PIN başarıyla değiştirildi';
+    ok.classList.remove('hidden');
+    setTimeout(closePinChange, 1200);
+  } catch (err) {
+    _showPinChangeError('Sunucuya ulaşılamadı: ' + err.message);
+  }
 }
 
 // =====================================================
@@ -3084,6 +3425,7 @@ function enterDemo() {
   // Cache'leri sıfırla — gerçek mod verisi demo'da görünmesin
   _managersCache    = null;
   if (typeof _refCihazlar !== 'undefined') _refCihazlar = null;
+  if (typeof _carryNextRapor !== 'undefined') _carryNextRapor = null;
   if (typeof kuAllUsers     !== 'undefined') kuAllUsers     = [];
   if (typeof vrAllRaporlar  !== 'undefined') vrAllRaporlar  = [];
   if (typeof onAllRaporlar  !== 'undefined') onAllRaporlar  = [];
@@ -3096,6 +3438,7 @@ function exitDemo() {
   // Cache'leri sıfırla — demo verisi gerçek modda görünmesin
   _managersCache    = null;
   if (typeof _refCihazlar !== 'undefined') _refCihazlar = null;
+  if (typeof _carryNextRapor !== 'undefined') _carryNextRapor = null;
   if (typeof kuAllUsers     !== 'undefined') kuAllUsers     = [];
   if (typeof vrAllRaporlar  !== 'undefined') vrAllRaporlar  = [];
   if (typeof onAllRaporlar  !== 'undefined') onAllRaporlar  = [];
@@ -3121,6 +3464,10 @@ const VR_LS = {
   cols:    'bmk_vr_visible_cols',
   cache:   'bmk_vr_cache'
 };
+
+// Bellek-içi rapor cache TTL'si (ms). Bu süre içinde sayfalar arası
+// geçişte listRaporlar tekrar çağrılmaz; "Yenile" butonu zorla yeniler.
+const VR_CACHE_TTL_MS = 60 * 1000;
 
 // Sütun tanımları — sıra önemli.
 const VR_COLUMNS = [
@@ -3153,6 +3500,46 @@ let vrSelected       = new Set();
 let vrColFilters     = {};       // { key: Set of values  |  {from,to} }
 let vrSearchTerm     = '';
 let vrLastLoadedAt   = null;
+
+// "Yeni" satır vurgusu — her sayfanın in-memory set'i. vrInit/onInit/ykInit
+// içinde computeAndMarkNewRows ile doldurulur, render fonksiyonları okur.
+let vrNewRowSet = new Set();
+let onNewRowSet = new Set();
+let ykNewRowSet = new Set();
+
+const SEEN_KEYS = {
+  veriler: 'bmk_vr_seen_raporlar',
+  onay:    'bmk_on_seen_raporlar',
+  yarim:   'bmk_yk_seen_raporlar'
+};
+
+// Verilen liste için "yeni" raporNo set'ini hesaplar ve aynı anda seen list'i
+// günceller. İlk run'da (seen hiç yazılmamış) hiçbiri yeni sayılmaz —
+// kullanıcı zaten ilk kez giriyor. Sonraki run'larda seen'de olmayanlar
+// "yeni" olur. Render bittiğinde set in-memory kalır; sayfa tekrar açılınca
+// yeni bir computeAndMarkNewRows çağrısı seen güncel olduğu için boş döner.
+function computeAndMarkNewRows(key, list) {
+  if (isDemo) return new Set(); // demo'da highlight yok (DEMO_RAPORLAR her oturum yenilenir)
+  let seen = null;
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw !== null) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) seen = new Set(arr);
+    }
+  } catch (_) {}
+
+  const currentNos = (list || []).map(r => r && r.raporNo).filter(Boolean);
+  const newSet = new Set();
+  if (seen !== null) {
+    currentNos.forEach(no => { if (!seen.has(no)) newSet.add(no); });
+  }
+  // Mevcut listeyi seen olarak yaz — silinen raporlar otomatik temizlenir
+  try {
+    localStorage.setItem(key, JSON.stringify(currentNos));
+  } catch (_) {}
+  return newSet;
+}
 
 // ---------- DEMO RAPOR FABRİKASI ----------
 // Mevcut fillDemoData() rapor oluşturma mantığını yeniden kullanıyoruz.
@@ -3423,11 +3810,18 @@ const VR_DURUM_LABEL = {
 };
 
 // ---------- YÜKLEME ----------
-async function loadVeriler() {
+// force=true → cache'i yoksay, backend'den tazele.
+// Aksi halde TTL içindeki bellek cache'i kullanılır (sayfa geçişleri anında).
+async function loadVeriler(force) {
   if (isDemo) {
     if (!DEMO_RAPORLAR) DEMO_RAPORLAR = buildDemoRaporlar();
     vrAllRaporlar  = DEMO_RAPORLAR.slice();
     vrLastLoadedAt = new Date();
+    return;
+  }
+  // Bellek cache TTL kontrolü — sayfa geçişlerinde tekrar tekrar fetch etme
+  if (!force && vrAllRaporlar && vrAllRaporlar.length > 0 && vrLastLoadedAt &&
+      (Date.now() - vrLastLoadedAt.getTime() < VR_CACHE_TTL_MS)) {
     return;
   }
   try {
@@ -3454,24 +3848,48 @@ async function loadVeriler() {
   }
 }
 
-// ---------- ANA AKIŞ ----------
-async function goVeriler() {
-  showPage('pgVeriler');
-  await vrInit();
+// Bellek cache'i optimistik güncelle: yeni ya da güncellenmiş bir raporu
+// vrAllRaporlar listesine yaz. Böylece submit/resubmit sonrası badge'ler
+// ve veriler/onay sekmeleri backend'i beklemeden taze görünür.
+// oldRaporNo verilirse onunla da arar (submit anında server raporNo değişebilir).
+function _vrUpsertRapor(rapor, oldRaporNo) {
+  if (!rapor || !rapor.raporNo) return;
+  if (!Array.isArray(vrAllRaporlar)) vrAllRaporlar = [];
+  const copy = JSON.parse(JSON.stringify(rapor));
+  const find = no => vrAllRaporlar.findIndex(x => String(x.raporNo) === String(no));
+  let idx = find(rapor.raporNo);
+  if (idx === -1 && oldRaporNo) idx = find(oldRaporNo);
+  if (idx !== -1) vrAllRaporlar[idx] = copy;
+  else            vrAllRaporlar.unshift(copy);
+  // localStorage cache'i de senkron tut
+  try {
+    localStorage.setItem(VR_LS.cache, JSON.stringify({ at: Date.now(), data: vrAllRaporlar }));
+  } catch (_) {}
 }
 
-async function vrInit() {
+// ---------- ANA AKIŞ ----------
+async function goVeriler() {
+  await withLoading(async () => {
+    showPage('pgVeriler');
+    await vrInit();
+  });
+}
+
+async function vrInit(forceReload) {
   document.getElementById('vrTbody').innerHTML =
     '<tr><td colspan="15" class="vr-loading">Yükleniyor...</td></tr>';
   document.getElementById('vrCards').innerHTML = '<div class="vr-loading">Yükleniyor...</div>';
 
-  await loadVeriler();
+  await loadVeriler(forceReload);
 
   // Teknisyen rolü → sadece kendi raporları
   const role = getPrimaryRole();
   if (role === 'teknisyen' && currentUser) {
     vrAllRaporlar = vrAllRaporlar.filter(r => r.testiUygulayan === currentUser.ad);
   }
+
+  // "Yeni" satır vurgusu — son ziyaretten sonra eklenen raporları işaretle
+  vrNewRowSet = computeAndMarkNewRows(SEEN_KEYS.veriler, vrAllRaporlar);
 
   // Teknisyen filtresini doldur (sadece yönetici/müdür görür)
   const fltTek = document.getElementById('vrFltTeknisyen');
@@ -3513,7 +3931,7 @@ async function vrInit() {
   vrApplyFilters();
 }
 
-function vrRefresh() { vrInit(); }
+function vrRefresh() { vrInit(true); }
 
 // ---------- FİLTRE + ARAMA + SIRALAMA ----------
 function vrApplyFilters() {
@@ -3691,8 +4109,10 @@ function vrRenderTbody(reset) {
 function vrBuildRow(r, idx) {
   const durum  = vrNormalizeDurum(r);
   const durLbl = VR_DURUM_LABEL[durum];
-  const rowCls = (durum === 'rejected') ? 'rejected' : '';
+  let rowCls = (durum === 'rejected') ? 'rejected' : '';
+  if (vrNewRowSet.has(r.raporNo)) rowCls += ' vr-row-new';
   const selCls = vrSelected.has(r.raporNo) ? ' selected' : '';
+  const newTag = vrNewRowSet.has(r.raporNo) ? '<span class="vr-new-tag">● YENİ</span>' : '';
 
   // Gelecek kalibrasyon uyarısı
   let gkHtml = vrDate(r.gelecekKalibrasyonTarihi);
@@ -3708,7 +4128,7 @@ function vrBuildRow(r, idx) {
       case 'idx':
         return `<td class="strip ${durum}">${idx + 1}</td>`;
       case 'raporNo':
-        return `<td><span class="rno" title="PDF önizlemeyi aç" onclick="vrOpenPdfFromList('${vrEsc(r.raporNo)}')">${vrEsc(r.raporNo)}</span></td>`;
+        return `<td>${newTag}<span class="rno" title="PDF önizlemeyi aç" onclick="vrOpenPdfFromList('${vrEsc(r.raporNo)}')">${vrEsc(r.raporNo)}</span></td>`;
       case 'kunyeNo':
         return `<td><span class="kno" onclick="vrOpenCihazGecmis('${vrEsc(r.kunyeNo || '')}')">${vrEsc(r.kunyeNo || '—')}</span></td>`;
       case 'devLabel':
@@ -3752,10 +4172,12 @@ function vrRenderCards() {
     const role  = getPrimaryRole();
     const extraDel = (role === 'yonetici' || role === 'mudur' || role === 'demo')
       ? `<button onclick="vrSilTek('${vrEsc(r.raporNo)}')">🗑</button>` : '';
-    return `<div class="vr-card ${durum}">
+    const newCls = vrNewRowSet.has(r.raporNo) ? ' vr-card-new' : '';
+    const newTag = vrNewRowSet.has(r.raporNo) ? '<span class="vr-new-tag">● YENİ</span>' : '';
+    return `<div class="vr-card ${durum}${newCls}">
       <input type="checkbox" ${vrSelected.has(r.raporNo) ? 'checked' : ''} onclick="vrToggleSelect('${vrEsc(r.raporNo)}', this)">
       <div class="top">
-        <span class="rno" title="PDF önizlemeyi aç" onclick="vrOpenPdfFromList('${vrEsc(r.raporNo)}')">${vrEsc(r.raporNo)}</span>
+        <span class="rno" title="PDF önizlemeyi aç" onclick="vrOpenPdfFromList('${vrEsc(r.raporNo)}')">${newTag}${vrEsc(r.raporNo)}</span>
         <span class="vr-badge ${durum}">${VR_DURUM_LABEL[durum]}</span>
       </div>
       <div class="mid"><b>Cihaz:</b>${vrEsc(vrDevLabel(r.devType))} · <b>Künye:</b><span class="kno" onclick="vrOpenCihazGecmis('${vrEsc(r.kunyeNo || '')}')">${vrEsc(r.kunyeNo || '—')}</span></div>
@@ -4557,12 +4979,14 @@ async function goOnay() {
     showPage('pgMenu');
     return;
   }
-  showPage('pgOnay');
-  await onInit();
+  await withLoading(async () => {
+    showPage('pgOnay');
+    await onInit();
+  });
 }
 
-async function onInit() {
-  await loadVeriler();          // pgVeriler ile aynı kaynak
+async function onInit(forceReload) {
+  await loadVeriler(forceReload);          // pgVeriler ile aynı kaynak
   onAllRaporlar = vrAllRaporlar.slice();
 
   // Son güncelleme zamanı (pgVeriler ile aynı format)
@@ -4579,6 +5003,11 @@ async function onInit() {
     );
   }
 
+  // "Yeni" satır vurgusu — sadece pending raporlar üzerinden hesapla
+  // (Bekleyenler sekmesinde gösterilen liste). History/stats sekmeleri etkilenmez.
+  const onPending = onAllRaporlar.filter(r => r.onayDurumu === 'pending');
+  onNewRowSet = computeAndMarkNewRows(SEEN_KEYS.onay, onPending);
+
   // Teknisyen filtresini doldur
   const fltTek = document.getElementById('onFltTeknisyen');
   const names = Array.from(new Set(onAllRaporlar.map(r => r.testiUygulayan).filter(Boolean))).sort();
@@ -4589,7 +5018,7 @@ async function onInit() {
   onSwitchTab(onActiveTab);
 }
 
-function onRefresh() { onInit(); }
+function onRefresh() { onInit(true); }
 
 // ---------- SEKMELER ----------
 function onSwitchTab(tab) {
@@ -4820,12 +5249,14 @@ function onBuildRowHtml(r) {
   const waitCls = wait >= 3 ? 'danger' : (wait >= 2 ? 'warn' : 'calm');
   const sonuc   = onComputeResult(r);
   const sel     = onSelected.has(r.raporNo) ? ' selected' : '';
+  const newCls  = onNewRowSet.has(r.raporNo) ? ' vr-row-new' : '';
+  const newTag  = onNewRowSet.has(r.raporNo) ? '<span class="vr-new-tag">● YENİ</span>' : '';
 
-  return `<tr class="${sel}">
+  return `<tr class="${sel}${newCls}">
     <td><input type="checkbox" ${onSelected.has(r.raporNo) ? 'checked' : ''}
                onclick="onToggleSelect('${vrEsc(r.raporNo)}', this)"></td>
     <td><span class="on-prio ${prio}" title="${prioLabel[prio]}">${prioIcon[prio]}</span></td>
-    <td><span class="rno" title="PDF önizlemeyi aç" onclick="vrOpenPdfFromList('${vrEsc(r.raporNo)}')">${vrEsc(r.raporNo)}</span></td>
+    <td>${newTag}<span class="rno" title="PDF önizlemeyi aç" onclick="vrOpenPdfFromList('${vrEsc(r.raporNo)}')">${vrEsc(r.raporNo)}</span></td>
     <td>${vrEsc(vrDevLabel(r.devType))}</td>
     <td>${vrEsc(r.marka || '—')}</td>
     <td>${vrEsc(r.model || '—')}</td>
@@ -4849,11 +5280,13 @@ function onBuildCardHtml(r) {
   const wait    = onWaitDays(r);
   const waitCls = wait >= 3 ? 'danger' : (wait >= 2 ? 'warn' : 'calm');
   const sonuc   = onComputeResult(r);
-  return `<div class="vr-card pending">
+  const newCls  = onNewRowSet.has(r.raporNo) ? ' vr-card-new' : '';
+  const newTag  = onNewRowSet.has(r.raporNo) ? '<span class="vr-new-tag">● YENİ</span>' : '';
+  return `<div class="vr-card pending${newCls}">
     <input type="checkbox" ${onSelected.has(r.raporNo) ? 'checked' : ''}
            onclick="onToggleSelect('${vrEsc(r.raporNo)}', this)">
     <div class="top">
-      <span class="rno" title="PDF önizlemeyi aç" onclick="vrOpenPdfFromList('${vrEsc(r.raporNo)}')">${prioIcon[prio]} ${vrEsc(r.raporNo)}</span>
+      <span class="rno" title="PDF önizlemeyi aç" onclick="vrOpenPdfFromList('${vrEsc(r.raporNo)}')">${newTag}${prioIcon[prio]} ${vrEsc(r.raporNo)}</span>
       <span class="on-result ${sonuc}">${ON_RESULT_LABEL[sonuc]}</span>
     </div>
     <div class="mid"><b>${vrEsc(r.marka || '—')}</b> ${vrEsc(r.model || '')} · ${vrEsc(vrDevLabel(r.devType))}</div>
@@ -5313,23 +5746,48 @@ async function goKullanici() {
     showPage('pgMenu');
     return;
   }
-  showPage('pgKullanici');
-  await kuInit();
+  await withLoading(async () => {
+    showPage('pgKullanici');
+    await kuInit();
+  });
 }
 
-async function kuInit() {
+async function kuInit(forceReload) {
   document.getElementById('kuList').innerHTML = '<div class="vr-loading">Yükleniyor...</div>';
-  await kuLoadUsers();
+  // Hem kullanıcıları hem raporları paralel yükle. Raporlar aktivite
+  // istatistikleri (toplam/onaylı/red) için gerekli — kuComputeStats
+  // vrAllRaporlar'a bakıyor, eskiden buraya yüklenmediği için 0 görünüyordu.
+  await Promise.all([
+    kuLoadUsers(forceReload),
+    loadVeriler(forceReload)
+  ]);
   kuSelected.clear();
   kuApplyFilters();
 }
 
-async function kuLoadUsers() {
+// kuLoadUsers — stale-while-revalidate.
+// localStorage cache varsa instant döner, arka planda backend'i tazeler.
+async function kuLoadUsers(forceReload) {
   if (isDemo) {
     if (!DEMO_KULLANICILAR) DEMO_KULLANICILAR = buildDemoKullanicilar();
     kuAllUsers = DEMO_KULLANICILAR.slice();
     return;
   }
+
+  // 1) localStorage cache varsa instant döndür + arka planda tazele
+  let local = null;
+  try {
+    const raw = localStorage.getItem(KU_LS_CACHE);
+    if (raw) local = JSON.parse(raw);
+  } catch (_) {}
+
+  if (!forceReload && local && Array.isArray(local.data) && local.data.length) {
+    kuAllUsers = local.data;
+    _bgRefreshKuUsers(); // fire-and-forget
+    return;
+  }
+
+  // 2) Cache yok veya zorla tazele → backend'i bekle
   try {
     const res = await apiCall('listUsers', { tc: currentUser.tc, pin: currentUser.pin });
     if (res.ok && Array.isArray(res.users)) {
@@ -5339,17 +5797,31 @@ async function kuLoadUsers() {
       throw new Error(res && res.error || 'Backend hata');
     }
   } catch (e) {
-    console.warn('listUsers başarısız, cache deneniyor:', e);
-    try {
-      const raw = localStorage.getItem(KU_LS_CACHE);
-      if (raw) {
-        const cached = JSON.parse(raw);
-        kuAllUsers = cached.data || [];
-      } else {
-        kuAllUsers = [];
-      }
-    } catch (_) { kuAllUsers = []; }
+    console.warn('listUsers başarısız:', e);
+    if (local && Array.isArray(local.data)) kuAllUsers = local.data;
+    else                                    kuAllUsers = [];
   }
+}
+
+// Arka plan tazeleme — sayfa açıkken sessizce günceller.
+let _bgKuUsersInFlight = false;
+function _bgRefreshKuUsers() {
+  if (_bgKuUsersInFlight) return;
+  if (!currentUser || !currentUser.pin) return;
+  _bgKuUsersInFlight = true;
+  apiCall('listUsers', { tc: currentUser.tc, pin: currentUser.pin })
+    .then(res => {
+      if (res && res.ok && Array.isArray(res.users)) {
+        kuAllUsers = res.users;
+        try { localStorage.setItem(KU_LS_CACHE, JSON.stringify({ at: Date.now(), data: res.users })); } catch (_) {}
+        const pg = document.getElementById('pgKullanici');
+        if (pg && pg.classList.contains('active') && typeof kuApplyFilters === 'function') {
+          kuApplyFilters();
+        }
+      }
+    })
+    .catch(e => { console.warn('arka plan listUsers:', e); })
+    .then(() => { _bgKuUsersInFlight = false; });
 }
 
 // ---------- FİLTRE + ARAMA ----------
@@ -5822,6 +6294,10 @@ let rcVisibleCihazlar = [];
 let rcEditingId       = null;
 
 // ---------- LOAD/SAVE ----------
+// forceReload=true → arka plan beklenmeden backend'den çekilir.
+// Aksi halde localStorage cache instant döner ve backend arka planda
+// fire-and-forget tazelenir (stale-while-revalidate).
+let _bgRefCihazRefreshInFlight = false;
 async function loadRefCihazlar(forceReload) {
   if (_refCihazlar && !forceReload) return _refCihazlar;
 
@@ -5840,7 +6316,14 @@ async function loadRefCihazlar(forceReload) {
     return _refCihazlar;
   }
 
-  // 3. Gerçek modda backend'e sor, başarısızsa localStorage fallback
+  // 3. Gerçek mod — localStorage cache varsa instant döndür, arka planda tazele
+  if (local && Array.isArray(local) && local.length && !forceReload) {
+    _refCihazlar = local;
+    _bgRefreshRefCihazlar(); // fire-and-forget
+    return _refCihazlar;
+  }
+
+  // 4. Cache yok veya zorla tazele → backend'i bekle
   try {
     const res = await apiCall('listRefCihazlar', { tc: currentUser.tc, pin: currentUser.pin });
     if (res && res.ok && Array.isArray(res.cihazlar)) {
@@ -5869,6 +6352,31 @@ async function loadRefCihazlar(forceReload) {
     }
     return _refCihazlar;
   }
+}
+
+// Arka plan tazeleme — localStorage cache'ini ve aktif sayfayı sessizce günceller.
+function _bgRefreshRefCihazlar() {
+  if (_bgRefCihazRefreshInFlight) return;
+  if (!currentUser || !currentUser.pin) return;
+  _bgRefCihazRefreshInFlight = true;
+  apiCall('listRefCihazlar', { tc: currentUser.tc, pin: currentUser.pin })
+    .then(res => {
+      if (res && res.ok && Array.isArray(res.cihazlar) && res.cihazlar.length > 0) {
+        _refCihazlar = res.cihazlar;
+        try { localStorage.setItem(RC_LS_KEY, JSON.stringify(_refCihazlar)); } catch (_) {}
+        // pgRefCihaz aktifse listeyi yeniden render et
+        const pg = document.getElementById('pgRefCihaz');
+        if (pg && pg.classList.contains('active') && typeof rcApplyFilters === 'function') {
+          rcApplyFilters();
+          const t = new Date();
+          const lu = document.getElementById('rcLastUpdate');
+          if (lu) lu.textContent = 'Son güncelleme: ' +
+            String(t.getHours()).padStart(2,'0') + ':' + String(t.getMinutes()).padStart(2,'0');
+        }
+      }
+    })
+    .catch(e => { console.warn('arka plan listRefCihazlar:', e); })
+    .then(() => { _bgRefCihazRefreshInFlight = false; });
 }
 
 async function saveRefCihazRemote(cihaz) {
@@ -5910,13 +6418,15 @@ async function goRefCihaz() {
     showPage('pgMenu');
     return;
   }
-  showPage('pgRefCihaz');
-  await rcInit();
+  await withLoading(async () => {
+    showPage('pgRefCihaz');
+    await rcInit();
+  });
 }
 
-async function rcInit() {
+async function rcInit(forceReload) {
   document.getElementById('rcList').innerHTML = '<div class="vr-loading">Yükleniyor...</div>';
-  await loadRefCihazlar(true);
+  await loadRefCihazlar(forceReload);
   // Son güncelleme zamanı
   const t = new Date();
   document.getElementById('rcLastUpdate').textContent =
@@ -5924,7 +6434,7 @@ async function rcInit() {
   rcApplyFilters();
 }
 
-function rcRefresh() { rcInit(); }
+function rcRefresh() { rcInit(true); }
 
 // ---------- DURUM HESAPLAMA ----------
 // Verilen ISO tarihten 'expired' / 'soon' (<30 gün) / 'valid' döndürür
@@ -6218,13 +6728,15 @@ let ykAllDrafts     = [];
 let ykVisibleDrafts = [];
 
 async function goYarimKalanlar() {
-  showPage('pgYarimKalanlar');
-  await ykInit();
+  await withLoading(async () => {
+    showPage('pgYarimKalanlar');
+    await ykInit();
+  });
 }
 
-async function ykInit() {
+async function ykInit(forceReload) {
   document.getElementById('ykList').innerHTML = '<div class="vr-loading">Yükleniyor...</div>';
-  await loadVeriler();   // pgVeriler ile aynı kaynak
+  await loadVeriler(forceReload);   // pgVeriler ile aynı kaynak
 
   // Taslakları al — onayDurumu null/'' ise taslak
   ykAllDrafts = (vrAllRaporlar || []).filter(r =>
@@ -6236,6 +6748,9 @@ async function ykInit() {
   if (role === 'teknisyen' && currentUser) {
     ykAllDrafts = ykAllDrafts.filter(r => r.testiUygulayan === currentUser.ad);
   }
+
+  // "Yeni" satır vurgusu
+  ykNewRowSet = computeAndMarkNewRows(SEEN_KEYS.yarim, ykAllDrafts);
 
   // Teknisyen filtresini doldur (sadece müdür/yönetici)
   const fltTek = document.getElementById('ykFltTeknisyen');
@@ -6256,7 +6771,7 @@ async function ykInit() {
   ykApplyFilters();
 }
 
-function ykRefresh() { ykInit(); }
+function ykRefresh() { ykInit(true); }
 
 function ykApplyFilters() {
   const term  = (document.getElementById('ykSearchInput').value || '').toLowerCase().trim();
@@ -6366,10 +6881,13 @@ function ykBuildCard(r) {
   else if (days === 1) ageStr = 'dün kaydedildi';
   else                 ageStr = days + ' gün önce kaydedildi';
 
+  const newCls = ykNewRowSet.has(r.raporNo) ? ' yk-card-new' : '';
+  const newTag = ykNewRowSet.has(r.raporNo) ? '<span class="vr-new-tag">● YENİ</span>' : '';
+
   return `
-    <div class="yk-card">
+    <div class="yk-card${newCls}">
       <div class="yk-top">
-        <span class="yk-rno" title="PDF önizlemeyi aç" onclick="vrOpenPdfFromList('${vrEsc(r.raporNo)}')">${vrEsc(r.raporNo)}</span>
+        <span class="yk-rno" title="PDF önizlemeyi aç" onclick="vrOpenPdfFromList('${vrEsc(r.raporNo)}')">${newTag}${vrEsc(r.raporNo)}</span>
         <span class="vr-badge draft">⏸️ Taslak</span>
         <span class="yk-age">${ageStr}</span>
       </div>
@@ -6447,13 +6965,15 @@ async function goMudur() {
     showPage('pgMenu');
     return;
   }
-  showPage('pgMudur');
-  await mdInit();
+  await withLoading(async () => {
+    showPage('pgMudur');
+    await mdInit();
+  });
 }
 
-async function mdInit() {
+async function mdInit(forceReload) {
   document.getElementById('mdKpiStrip').innerHTML = '<div class="vr-loading">Yükleniyor...</div>';
-  await loadVeriler();          // Tüm raporlar (cache'lenir)
+  await loadVeriler(forceReload);          // Tüm raporlar (cache'lenir)
   // Son güncelleme zamanı
   const t = new Date();
   document.getElementById('mdLastUpdate').textContent =
@@ -6461,7 +6981,7 @@ async function mdInit() {
   mdRender();
 }
 
-function mdRefresh() { mdInit(); }
+function mdRefresh() { mdInit(true); }
 
 // Seçili zaman dilimine göre raporları filtrele
 function mdFilterByRange(raporlar, range) {
@@ -6719,6 +7239,11 @@ function kuOpenAktivite(tc) {
 // ÇIKIŞ
 // =====================================================
 function logout() {
+  // Çıkış → "Beni hatırla" kaydını temizle (yoksa hemen tekrar otomatik girilir)
+  clearRememberedLogin();
+  const cb = document.getElementById('rememberLogin');
+  if (cb) cb.checked = false;
+
   currentUser      = null;
   isDemo           = false;
   window._prevUser = null;
@@ -6733,6 +7258,7 @@ function logout() {
   // sonrası eski demo verisinin gerçek modda görünmesini engeller).
   _managersCache    = null;
   if (typeof _refCihazlar !== 'undefined') _refCihazlar = null;
+  if (typeof _carryNextRapor !== 'undefined') _carryNextRapor = null;
   if (typeof kuAllUsers     !== 'undefined') kuAllUsers     = [];
   if (typeof vrAllRaporlar  !== 'undefined') vrAllRaporlar  = [];
   if (typeof onAllRaporlar  !== 'undefined') onAllRaporlar  = [];
@@ -6789,9 +7315,36 @@ showPage = function(id) {
   _origShowPage(id);
   if (id === 'pgDevice') renderDeviceGrid();
   if (id === 'pgApp')    renderApp();
-  // Menüye her gelişte kart sayıları (badge'leri) yeniden hesaplansın
-  if (id === 'pgMenu' && typeof setupMenu === 'function' && currentUser) setupMenu();
+  // Menüye her gelişte kart sayıları (badge'leri) yeniden hesaplansın.
+  // 1) Önce mevcut cache ile anında render et.
+  // 2) Arka planda backend'i tazele; gelirse badge'leri sessizce güncelle.
+  // 3) Form cache'lerini (managers + refCihazlar) preload et — defibrilatör
+  //    tıklamaya kadar hazır olsun, böylece form sync olarak anında açılır.
+  if (id === 'pgMenu' && typeof setupMenu === 'function' && currentUser) {
+    setupMenu();
+    _bgRefreshMenuBadges();
+    if (typeof preloadFormCaches === 'function') preloadFormCaches();
+  }
 };
+
+// Ana menü açıldığında arka planda taze veri çekip badge'leri günceller.
+// Aynı anda birden fazla istek atılmasını engeller.
+let _menuBadgeRefreshInFlight = false;
+function _bgRefreshMenuBadges() {
+  if (isDemo) return;                    // demo zaten tamamen lokal
+  if (!currentUser || !currentUser.pin) return;
+  if (_menuBadgeRefreshInFlight) return;
+  _menuBadgeRefreshInFlight = true;
+  // force=true → TTL cache'i atla, gerçekten taze çek
+  loadVeriler(true)
+    .then(() => {
+      // pgMenu hâlâ aktifse badge'leri yeniden hesapla
+      const pg = document.getElementById('pgMenu');
+      if (pg && pg.classList.contains('active')) setupMenu();
+    })
+    .catch(e => { console.warn('arka plan menü tazeleme:', e); })
+    .then(() => { _menuBadgeRefreshInFlight = false; });
+}
 
 function renderDeviceGrid() {
   const grid = document.getElementById('deviceCardGrid');
@@ -6814,9 +7367,36 @@ function renderDeviceGrid() {
 
 async function selectDevice(id) {
   currentDevType = id;
-  await prepareNewRapor();
-  currentStep = 1;
-  showPage('pgApp');
+  // Cache sıcaksa (genelde her zaman böyledir — login sonrası preload edilir)
+  // tamamen sync akış: hiç overlay, hiç microtask. Form anında açılır.
+  if (isFormCacheReady()) {
+    prepareNewRaporSync();
+    currentStep = 1;
+    showPage('pgApp');
+    return;
+  }
+  // Cache yok (örn. ilk login sonrası preload bitmedi) → klasik async + overlay
+  await withLoading(async () => {
+    await prepareNewRapor();
+    currentStep = 1;
+    showPage('pgApp');
+  });
+}
+
+// Form render için gereken cache'ler hazır mı?
+// Demo modda her zaman hazır kabul edilir (bağımlılıklar lokal).
+function isFormCacheReady() {
+  if (isDemo) return true;
+  return _managersCache !== null && _refCihazlar !== null;
+}
+
+// Login/menü açılışında form cache'lerini arka planda preload et.
+// Böylece kullanıcı defibrilatöre tıkladığında her şey hazır olur.
+function preloadFormCaches() {
+  if (isDemo) return;
+  if (!currentUser || !currentUser.pin) return;
+  if (_managersCache === null) loadManagersList();   // fire-and-forget
+  if (_refCihazlar   === null) loadRefCihazlar();    // localStorage cache instant
 }
 
 // =====================================================
@@ -6886,16 +7466,63 @@ async function loadManagersList(forceReload) {
   return _managersCache;
 }
 
+// Sync versiyon — cache hazır olduğunda kullanılır. Microtask yok, await yok,
+// form anında açılır. peekRaporNo arka planda alınır ve raporNo input'una
+// geldiğinde yazılır.
+function prepareNewRaporSync() {
+  // Demo modda sync no, gerçek modda placeholder + arka plan
+  let initialRaporNo = 'Yükleniyor…';
+  let noPromise = null;
+  if (isDemo) {
+    if (!DEMO_RAPORLAR) DEMO_RAPORLAR = buildDemoRaporlar();
+    initialRaporNo = generateDemoRaporNo(currentDevType);
+  } else {
+    noPromise = fetchNextRaporNo(); // backend, await yok
+  }
+  _buildCurrentRapor(initialRaporNo);
+  if (noPromise) _attachRaporNoPromise(noPromise, currentRapor);
+}
+
 async function prepareNewRapor() {
+  // peekRaporNo backend roundtrip'ini bekleme — formu hemen aç,
+  // numara gelince input'a yaz. Sorumlu müdür (managers) ve referans
+  // cihaz (refCihazlar) listeleri form render için gerekli, paralel beklenir.
+  // Pratikte ikisi de cache'ten geldiği için anında döner.
+  const noPromise = fetchNextRaporNo();
+  await Promise.all([loadManagersList(), loadRefCihazlar()]);
+
+  // Demo modda fetchNextRaporNo sync resolve olur — anında alıp set edebiliriz.
+  // Gerçek modda placeholder göster, .then() ile sonra güncelle.
+  let initialRaporNo = 'Yükleniyor…';
+  if (isDemo) {
+    initialRaporNo = await noPromise;
+  }
+
+  _buildCurrentRapor(initialRaporNo);
+  if (!isDemo) _attachRaporNoPromise(noPromise, currentRapor);
+}
+
+// peekRaporNo Promise'ini currentRapor'a bağla — geldiğinde input'u günceller.
+function _attachRaporNoPromise(noPromise, targetRapor) {
+  noPromise.then(no => {
+    if (currentRapor !== targetRapor) return; // başka cihaza geçilmiş
+    currentRapor.raporNo = no || '—';
+    const inp = document.getElementById('raporNoInput');
+    if (inp) inp.value = currentRapor.raporNo;
+  }).catch(() => {});
+}
+
+// currentRapor objesini iskeletten oluşturur. fillDemoData, _carryNextRapor
+// uygulamaları ve auto-fill bu fonksiyon içinde yapılır. Hem sync hem async
+// hazırlık akışı bu helper'ı kullanır → ortak mantık tek yerde.
+function _buildCurrentRapor(initialRaporNo) {
   const today = new Date();
   const next  = new Date();
   next.setFullYear(next.getFullYear() + 1);
   const fmt = d => d.toISOString().slice(0, 10);
 
-  const nextRaporNo = await fetchNextRaporNo();
-
   currentRapor = {
-    raporNo:           nextRaporNo,
+    raporNo:           initialRaporNo,
     devType:           currentDevType,
     onayDurumu:        null,
     kaydedildi:        false,
@@ -6934,19 +7561,19 @@ async function prepareNewRapor() {
 
   if (isDemo) fillDemoData();
 
-  // Sorumlu müdür dropdown'u için müdür/yönetici listesini önceden cache'le
-  await loadManagersList();
-
-  // Referans cihazları yükle (S3-S6 dropdown'ları için)
-  await loadRefCihazlar();
+  // "Yeni Cihaz" akışında bir önceki rapordan taşınan ortak alanları uygula
+  // (nezaret eden, sağlık tesisi, yer, branş, zimmet, sorumlu müdür).
+  // fillDemoData'dan SONRA çağrılır → demo random veri üstüne yazılır.
+  if (_carryNextRapor) {
+    Object.assign(currentRapor, _carryNextRapor);
+    _carryNextRapor = null;
+  }
 
   // Her step için tek cihaz varsa otomatik doldur (kullanıcı yine değiştirebilir)
   ['s3','s4','s5','s6'].forEach(stepKey => {
     const refKey = stepKey + 'Ref';
     const list = rcCihazlarForStep(stepKey);
-    // Sadece daha önce doldurulmamışsa otomatik ata
     if (list.length >= 1 && !currentRapor[refKey].refCihazId && !currentRapor[refKey].tanim) {
-      // Birden fazla cihaz varsa otomatik doldurma yapma — kullanıcı seçsin
       if (list.length === 1) {
         rcFillRefFromCihaz(currentRapor[refKey], list[0]);
       }
@@ -7249,7 +7876,7 @@ function renderS1() {
   const r = currentRapor;
   return '<div class="form-section"><h3>S1 — Cihaz Bilgileri</h3>' +
     '<div class="form-row two">' +
-      '<div class="form-field"><label>Rapor No</label><input type="text" value="' + escAttr(r.raporNo) + '" readonly></div>' +
+      '<div class="form-field"><label>Rapor No</label><input type="text" id="raporNoInput" value="' + escAttr(r.raporNo) + '" readonly></div>' +
       '<div class="form-field"><label>Uygulama Yeri</label>' +
         '<select onchange="setRap(\'uygulamaYeri\', this.value)">' +
           '<option value="Laboratuvar"' + (r.uygulamaYeri === 'Laboratuvar' ? ' selected' : '') + '>Laboratuvar</option>' +
@@ -8108,6 +8735,8 @@ async function sendForApproval() {
       _prepareResubmit(currentRapor);
       currentRapor.onayDurumu = 'pending';
       currentRapor.kaydedildi = true;
+      // Bellek cache'i optimistik güncelle: badge'ler ve listeler taze görünsün
+      _vrUpsertRapor(currentRapor);
       renderStep();
     } catch (err) {
       alert('Sunucuya ulaşılamadı: ' + err.message);
@@ -8131,6 +8760,9 @@ async function sendForApproval() {
     currentRapor.kaydedildi = true;
     // Yerel taslaklardan eski no ile temizle
     removeRaporFromKey(DRAFTS_KEY, oldRaporNo);
+    // Bellek cache'i optimistik güncelle: ana menüye dönüş ve veriler/onay
+    // sekmeleri taze veri için backend'i beklemesin
+    _vrUpsertRapor(currentRapor, oldRaporNo);
     renderStep();
   } catch (err) {
     alert('Sunucuya ulaşılamadı: ' + err.message);
@@ -9140,7 +9772,26 @@ function generatePdfPreview() {
   showPDFModal(html);
 }
 
+// Onaya gönderildikten sonra "Yeni Cihaz" basıldığında, teknisyenin
+// aynı sağlık tesisinde / aynı yerde / aynı sorumlu müdürle peş peşe
+// birden çok cihaz kalibre etmesi yaygın bir durum. Bu yüzden son raporda
+// girilen ortak alanları geçici olarak hatırlayıp bir sonraki rapora
+// otomatik aktarıyoruz. prepareNewRapor sonunda uygulanır ve temizlenir.
+let _carryNextRapor = null;
+
 function newDeviceFromSent() {
+  if (currentRapor) {
+    _carryNextRapor = {
+      nezaretEden:       currentRapor.nezaretEden       || '',
+      saglikTesisi:      currentRapor.saglikTesisi      || '',
+      yer:               currentRapor.yer               || '',
+      brans:             currentRapor.brans             || '',
+      zimmet:            currentRapor.zimmet            || '',
+      sorumluMudurTc:    currentRapor.sorumluMudurTc    || '',
+      sorumluMudurAd:    currentRapor.sorumluMudurAd    || '',
+      sorumluMudurUnvan: currentRapor.sorumluMudurUnvan || ''
+    };
+  }
   currentRapor = null;
   showPage('pgDevice');
 }
@@ -9172,6 +9823,30 @@ function hasAnyData(r) {
   if (r.s6Batarya || r.s6Senkron) return true;
   if (r.saglikTesisi || r.kunyeNo || r.marka || r.model || r.seriNo) return true;
   return false;
+}
+
+// =====================================================
+// GLOBAL LOADING OVERLAY
+// =====================================================
+// Tüm panel/sayfa açılışlarında "Yükleniyor…" göstergesi.
+// withLoading(asyncFn) wrapper'ı go* fonksiyonlarında kullanılır.
+let _loadingDepth = 0;
+function showLoading() {
+  _loadingDepth++;
+  const ov = document.getElementById('loadingOverlay');
+  if (ov) ov.classList.remove('hidden');
+}
+function hideLoading() {
+  _loadingDepth = Math.max(0, _loadingDepth - 1);
+  if (_loadingDepth === 0) {
+    const ov = document.getElementById('loadingOverlay');
+    if (ov) ov.classList.add('hidden');
+  }
+}
+async function withLoading(fn) {
+  showLoading();
+  try { return await fn(); }
+  finally { hideLoading(); }
 }
 
 // =====================================================
