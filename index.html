@@ -3737,14 +3737,14 @@ const SEEN_KEYS = {
 //   2) CHANGELOG'un EN ÜSTÜNE yeni bir girdi ekle
 // Login sonrası, kullanıcı daha önce bu sürümü görmediyse popup açılır.
 // =====================================================
-const APP_VERSION = '2026.04.12.3';
+const APP_VERSION = '2026.04.12.4';
 const CHANGELOG = [
   {
-    version: '2026.04.12.3',
-    title: 'Sürüm 12 Nisan 2026 (3)',
+    version: '2026.04.12.4',
+    title: 'Sürüm 12 Nisan 2026 (4)',
     items: [
-      'PDF raporlarındaki QR kod düzeltildi — kütüphane projeye yerel olarak indirildi (internet kesilse bile çalışır)',
-      'QR üretiminde 0×0 container sorunu giderildi, kod artık güvenilir şekilde her sayfada görünecek',
+      'PDF raporlarındaki QR kod artık iframe içinde doğrudan oluşturulup render ediliyor (önceki dataURL yöntemi html2canvas tarafından bazı koşullarda atlanıyordu)',
+      'QR kod kütüphanesi projeye yerel olarak eklendi — internet kesilse bile QR çalışır',
       'Yarım Kalanlar listesi artık herkese sadece kendi taslaklarını gösterir (yalnızca yönetici tüm teknisyenlerin taslaklarını görebilir)',
       'Onaya gönderme sırasında başka kullanıcıya ait bir rapor seçilirse daha açıklayıcı mesaj gösterilir',
       'Veriler ve diğer listelerde "yeni satır" vurgulaması artık durum değişikliklerinde de çalışır: bir taslak onaya gönderildiğinde, onaylandığında, reddedildiğinde veya revizyon istendiğinde ilgili sayfada o rapor "● YENİ" olarak işaretlenir'
@@ -5158,8 +5158,10 @@ async function vrGeneratePdfBlob(rapor) {
     '<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8">' +
     '<title>' + pdfEsc(rapor.raporNo) + '</title>' +
     '<script src="html2pdf.bundle.min.js"><\/script>' +
+    '<script src="qrcode.min.js"><\/script>' +
     '<style>' + pdfStyle() + '</style></head><body' + bodyCls + '>' +
     pdfPage1() + pdfPage2() + pdfPage3() + pdfPage4() + pdfPage5() + pdfPage6() +
+    pdfQrInitScript() +
     '</body></html>';
 
   // Offscreen iframe
@@ -9203,10 +9205,9 @@ function pdfHeader(sayfaNo) {
     '<div class="pdf-hline"></div>';
 }
 
-// ---- QR kod: rapor bilgilerini taşıyan PNG dataURL üretir ----
-// Her raporNo için cache'lenir; toplu PDF'te currentRapor değiştikçe yeniden üretilir.
-let _pdfQrCache = { raporNo: null, dataUrl: '' };
-
+// ---- QR kod: rapor bilgilerini taşıyan metin ----
+// Bu metin pdfBildirim() içinde data-qr attribute'una encode edilir,
+// iframe içindeki pdfQrInitScript() canvas'a çizer.
 function _buildRaporQrText(r) {
   if (!r) return '';
   const cihazLabel = (typeof vrDevLabel === 'function')
@@ -9227,56 +9228,16 @@ function _buildRaporQrText(r) {
   ].join('\n');
 }
 
-function buildRaporQrDataUrl(r) {
-  if (!r) return '';
-  if (_pdfQrCache.raporNo === r.raporNo && _pdfQrCache.dataUrl) return _pdfQrCache.dataUrl;
-  _pdfQrCache = { raporNo: r.raporNo || null, dataUrl: '' };
-  if (typeof QRCode === 'undefined') {
-    console.warn('QRCode kütüphanesi yüklenmedi (qrcode.min.js bulunamadı?). PDF QR kodsuz üretilecek.');
-    return '';
-  }
-  try {
-    // Off-screen ama gerçek boyutlu container — qrcodejs bazı durumlarda
-    // 0x0 container'da canvas çizmiyor, bu yüzden gerçek boyut veriyoruz.
-    const holder = document.createElement('div');
-    holder.style.cssText = 'position:absolute;left:-9999px;top:0;';
-    document.body.appendChild(holder);
-    // qrcodejs v1.0.0 — canvas + img oluşturur
-    new QRCode(holder, {
-      text: _buildRaporQrText(r),
-      width: 200,   // yüksek çözünürlük, PDF'te 80x80 px olarak render olur
-      height: 200,
-      colorDark:  '#000000',
-      colorLight: '#ffffff',
-      correctLevel: QRCode.CorrectLevel.M
-    });
-    let dataUrl = '';
-    const canvas = holder.querySelector('canvas');
-    if (canvas && typeof canvas.toDataURL === 'function') {
-      try { dataUrl = canvas.toDataURL('image/png'); } catch (_) {}
-    }
-    if (!dataUrl) {
-      const img = holder.querySelector('img');
-      if (img && img.src) dataUrl = img.src;
-    }
-    document.body.removeChild(holder);
-    if (!dataUrl) console.warn('QR dataURL boş döndü; kütüphane canvas/img üretemedi');
-    _pdfQrCache.dataUrl = dataUrl;
-    return dataUrl;
-  } catch (e) {
-    console.error('QR üretim hatası:', e);
-    return '';
-  }
-}
-
 function pdfBildirim() {
-  const qrUrl = buildRaporQrDataUrl(currentRapor);
-  const qrHtml = qrUrl
-    ? ('<div class="pf-qr">' +
-         '<img src="' + qrUrl + '" alt="QR">' +
-         '<div class="pf-qr-label">Rapor Bilgisi</div>' +
-       '</div>')
-    : '';
+  // QR placeholder — iframe içindeki init script bunu QR canvas'a dönüştürür.
+  // Text'i encodeURIComponent ile data attribute'a sığdırıyoruz (newline, &, < dahil).
+  const qrText = _buildRaporQrText(currentRapor);
+  const qrEncoded = encodeURIComponent(qrText);
+  const qrHtml =
+    '<div class="pf-qr">' +
+      '<div class="pf-qr-canvas" data-qr="' + qrEncoded + '"></div>' +
+      '<div class="pf-qr-label">Rapor Bilgisi</div>' +
+    '</div>';
   return '' +
     '<div class="pdf-footer">' +
       '<div class="pf-text">' +
@@ -9287,6 +9248,24 @@ function pdfBildirim() {
       '</div>' +
       qrHtml +
     '</div>';
+}
+
+// iframe srcdoc body sonuna eklenecek inline init script.
+// Tüm .pf-qr-canvas placeholder'larını gezer, data-qr attribute'undan text'i alır,
+// QRCode kütüphanesini kullanarak iframe DOM'unda canvas çizer. Senkron çalışır.
+function pdfQrInitScript() {
+  return '<script>(function(){' +
+    'if (typeof QRCode === "undefined") { console.warn("iframe: QRCode yok"); return; }' +
+    'var nodes = document.querySelectorAll(".pf-qr-canvas");' +
+    'for (var i = 0; i < nodes.length; i++) {' +
+      'try {' +
+        'var el = nodes[i];' +
+        'var t = decodeURIComponent(el.getAttribute("data-qr") || "");' +
+        'if (!t) continue;' +
+        'new QRCode(el, { text: t, width: 110, height: 110, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });' +
+      '} catch (e) { console.error("iframe QR err:", e); }' +
+    '}' +
+  '})();<\/script>';
 }
 
 function pdfImza(kind) {
@@ -9984,8 +9963,11 @@ function pdfStyle() {
       'flex: 0 0 auto; display: flex; flex-direction: column; align-items: center;' +
       'background: #ffffff; padding: 3px; border: 1px solid #e0d6cc; border-radius: 3px;' +
     '}' +
-    '.pdf-footer .pf-qr img, .pdf-footer .pf-qr canvas {' +
-      'width: 80px; height: 80px; display: block;' +
+    '.pdf-footer .pf-qr-canvas {' +
+      'width: 80px; height: 80px; display: block; line-height: 0;' +
+    '}' +
+    '.pdf-footer .pf-qr-canvas img, .pdf-footer .pf-qr-canvas canvas {' +
+      'width: 80px !important; height: 80px !important; display: block;' +
     '}' +
     '.pdf-footer .pf-qr .pf-qr-label {' +
       'font-size: 5pt; color: #5a3a3a; font-style: normal; font-family: Arial, sans-serif;' +
@@ -10202,6 +10184,7 @@ function generatePdfPreview() {
        aynı document içinde render eder, cross-document stil kaybı olmaz
        (aksi hâlde gradient/watermark/rotate olan sayfalar siyah çıkıyor). */
     '<script src="html2pdf.bundle.min.js"><\/script>' +
+    '<script src="qrcode.min.js"><\/script>' +
     '<style>' + pdfStyle() + '</style></head><body' + bodyCls + '>' +
     pdfPage1() +
     pdfPage2() +
@@ -10209,6 +10192,7 @@ function generatePdfPreview() {
     pdfPage4() +
     pdfPage5() +
     pdfPage6() +
+    pdfQrInitScript() +
     '</body></html>';
   showPDFModal(html);
 }
