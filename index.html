@@ -69,14 +69,16 @@ html, body {
   border-radius: 50%;
   background: var(--bg2);
   border: 3px solid var(--accent);
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2rem;
-  color: var(--accent);
-  font-weight: 700;
-  letter-spacing: 1px;
   margin-bottom: 24px;
+}
+.splash-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .splash-title {
   font-size: 1.25rem;
@@ -277,6 +279,20 @@ html, body {
 }
 .menu-topbar .brand {
   display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.menu-topbar .brand .topbar-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+.menu-topbar .brand .brand-text {
+  display: flex;
   flex-direction: column;
   line-height: 1.2;
   min-width: 0;
@@ -406,12 +422,13 @@ html, body {
 }
 .menu-card {
   position: relative;
+  overflow: hidden;
   background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 18px 16px;
   cursor: pointer;
-  transition: transform 0.1s, border-color 0.2s;
+  transition: transform 0.1s, border-color 0.15s, background 0.15s, box-shadow 0.15s;
   text-align: left;
   font-family: inherit;
   color: var(--text);
@@ -419,10 +436,13 @@ html, body {
   flex-direction: column;
   gap: 4px;
   min-height: 120px;
+  touch-action: manipulation;
 }
 .menu-card:active {
-  transform: scale(0.98);
+  transform: scale(0.95);
   border-color: var(--accent);
+  background: var(--surf);
+  box-shadow: 0 0 0 2px rgba(200, 16, 46, 0.25);
 }
 .menu-card .icon {
   font-size: 1.8rem;
@@ -444,6 +464,45 @@ html, body {
   border-color: var(--yellow);
 }
 .menu-card.demo .title { color: var(--yellow); }
+
+/* ---------- Press ripple (basınç geri bildirimi) ---------- */
+.press-ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(200, 16, 46, 0.35);
+  transform: scale(0);
+  animation: pressRipple 0.55s ease-out forwards;
+  pointer-events: none;
+  z-index: 5;
+}
+@keyframes pressRipple {
+  to { transform: scale(2.6); opacity: 0; }
+}
+
+/* ---------- Menü düzenleme modu (iPhone tarzı wiggle + drag) ---------- */
+.card-grid.edit-mode .menu-card {
+  animation: cardWiggle 0.32s ease-in-out infinite alternate;
+  cursor: grab;
+  user-select: none;
+}
+.card-grid.edit-mode .menu-card:active { transform: none; box-shadow: none; }
+.card-grid.edit-mode .menu-card.dragging {
+  animation: none;
+  opacity: 0.85;
+  cursor: grabbing;
+  z-index: 50;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.55);
+  border-color: var(--accent);
+}
+@keyframes cardWiggle {
+  0%   { transform: rotate(-1.1deg); }
+  100% { transform: rotate(1.1deg); }
+}
+.icon-btn.edit-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
 
 .card-badge {
   position: absolute;
@@ -1993,7 +2052,7 @@ html, body {
 
 <!-- ================= SPLASH ================= -->
 <div id="pgSplash" class="page active">
-  <div class="splash-logo">HİS</div>
+  <div class="splash-logo"><img src="icon-512.png" alt="İSM"></div>
   <div class="splash-title">Biyomedikal Metroloji</div>
   <div class="splash-title">Kalibrasyon Sistemi</div>
   <div class="splash-sub">Hatay İl Sağlık Müdürlüğü</div>
@@ -2079,14 +2138,18 @@ html, body {
 <div id="pgMenu" class="page">
   <div class="menu-topbar">
     <div class="brand">
-      <span class="name">Hatay İSM</span>
-      <span class="sub">Biyomedikal Kalibrasyon</span>
+      <img class="topbar-logo" src="icon-512.png" alt="">
+      <div class="brand-text">
+        <span class="name">Hatay İSM</span>
+        <span class="sub">Biyomedikal Kalibrasyon</span>
+      </div>
     </div>
     <div class="right">
       <button class="profile-btn" onclick="openProfile()">
         <span class="pname" id="profileBtnName">—</span>
         <span class="role-badge" id="profileBtnBadge">—</span>
       </button>
+      <button class="icon-btn" id="menuEditToggle" onclick="toggleMenuEdit()" title="Kartları yeniden sırala">✏️</button>
       <button class="icon-btn" onclick="logout()" title="Çıkış">⎋</button>
     </div>
   </div>
@@ -3056,20 +3119,23 @@ function setupMenu() {
 
   // Kartlar
   const grid  = document.getElementById('menuCardGrid');
-  const cards = buildMenuCards();
+  const cards = applyMenuOrder(buildMenuCards());
   grid.innerHTML = cards.map(c => {
     const badgeCls = c.badgeCls ? (' ' + c.badgeCls) : '';
     const badge    = (c.badge && c.badge > 0)
       ? '<span class="card-badge' + badgeCls + '">' + c.badge + '</span>'
       : '';
     const variant = c.variant ? (' ' + c.variant) : '';
-    return '<button class="menu-card' + variant + '" onclick="' + c.action + '">' +
+    return '<button class="menu-card' + variant + '" data-card-key="' + c.title.replace(/"/g,'&quot;') + '" onclick="' + c.action + '">' +
              badge +
              '<div class="icon">' + c.icon + '</div>' +
              '<div class="title">' + c.title + '</div>' +
              '<div class="desc">'  + c.desc  + '</div>' +
            '</button>';
   }).join('');
+  ensureMenuDragInit();
+  // Kullanıcı değişmişse edit modunu kapat (temiz başlangıç)
+  exitMenuEditMode();
 
   // Bildirim çubuğu (sadece mudur + yonetici)
   const notif   = document.getElementById('notifBar');
@@ -3432,6 +3498,9 @@ function enterDemo() {
   if (typeof kuAllUsers     !== 'undefined') kuAllUsers     = [];
   if (typeof vrAllRaporlar  !== 'undefined') vrAllRaporlar  = [];
   if (typeof onAllRaporlar  !== 'undefined') onAllRaporlar  = [];
+  // Demo "yeni satır" seen'ini mevcut DEMO raporlarıyla başlat — sonradan
+  // eklenen raporlar (taslak, onaya gönder, onayla) bu oturumda yeni sayılır.
+  _initDemoSeen();
   setupMenu();
   showPage('pgMenu');
 }
@@ -3446,6 +3515,7 @@ function exitDemo() {
   if (typeof vrAllRaporlar  !== 'undefined') vrAllRaporlar  = [];
   if (typeof onAllRaporlar  !== 'undefined') onAllRaporlar  = [];
   DEMO_RAPORLAR     = null;
+  _demoSeen         = {};
   if (typeof DEMO_KULLANICILAR !== 'undefined') DEMO_KULLANICILAR = null;
   if (window._prevUser) {
     currentUser = window._prevUser;
@@ -3516,21 +3586,42 @@ const SEEN_KEYS = {
   yarim:   'bmk_yk_seen_raporlar'
 };
 
+// Demo modu için in-memory seen (localStorage kirletmemek ve fresh başlatmak için).
+// enterDemo'da mevcut DEMO_RAPORLAR'ın raporNo'ları ile doldurulur; böylece demo
+// oturumu boyunca sadece kullanıcının EKLEDİĞİ yeni raporlar "yeni" sayılır.
+let _demoSeen = {};
+
+function _initDemoSeen() {
+  if (!DEMO_RAPORLAR) {
+    try { DEMO_RAPORLAR = buildDemoRaporlar(); } catch (_) { DEMO_RAPORLAR = []; }
+  }
+  const nos = (DEMO_RAPORLAR || []).map(r => r && r.raporNo).filter(Boolean);
+  _demoSeen = {
+    [SEEN_KEYS.veriler]: new Set(nos),
+    [SEEN_KEYS.onay]:    new Set(nos),
+    [SEEN_KEYS.yarim]:   new Set(nos)
+  };
+}
+
 // Verilen liste için "yeni" raporNo set'ini hesaplar ve aynı anda seen list'i
 // günceller. İlk run'da (seen hiç yazılmamış) hiçbiri yeni sayılmaz —
 // kullanıcı zaten ilk kez giriyor. Sonraki run'larda seen'de olmayanlar
 // "yeni" olur. Render bittiğinde set in-memory kalır; sayfa tekrar açılınca
 // yeni bir computeAndMarkNewRows çağrısı seen güncel olduğu için boş döner.
 function computeAndMarkNewRows(key, list) {
-  if (isDemo) return new Set(); // demo'da highlight yok (DEMO_RAPORLAR her oturum yenilenir)
   let seen = null;
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw !== null) {
-      const arr = JSON.parse(raw);
-      if (Array.isArray(arr)) seen = new Set(arr);
-    }
-  } catch (_) {}
+  if (isDemo) {
+    const existing = _demoSeen[key];
+    if (existing instanceof Set) seen = existing;
+  } else {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw !== null) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) seen = new Set(arr);
+      }
+    } catch (_) {}
+  }
 
   const currentNos = (list || []).map(r => r && r.raporNo).filter(Boolean);
   const newSet = new Set();
@@ -3538,9 +3629,13 @@ function computeAndMarkNewRows(key, list) {
     currentNos.forEach(no => { if (!seen.has(no)) newSet.add(no); });
   }
   // Mevcut listeyi seen olarak yaz — silinen raporlar otomatik temizlenir
-  try {
-    localStorage.setItem(key, JSON.stringify(currentNos));
-  } catch (_) {}
+  if (isDemo) {
+    _demoSeen[key] = new Set(currentNos);
+  } else {
+    try {
+      localStorage.setItem(key, JSON.stringify(currentNos));
+    } catch (_) {}
+  }
   return newSet;
 }
 
@@ -7268,6 +7363,7 @@ function logout() {
   if (typeof vrLastLoadedAt !== 'undefined') vrLastLoadedAt = null;
   // Demo verilerini sıfırla — yeni demo session fresh başlasın
   DEMO_RAPORLAR     = null;
+  _demoSeen         = {};
   if (typeof DEMO_KULLANICILAR !== 'undefined') DEMO_KULLANICILAR = null;
   showPage('pgLogin');
   renderRecentTcs();
@@ -9853,10 +9949,175 @@ async function withLoading(fn) {
 }
 
 // =====================================================
+// MENÜ KART SIRALAMA (iPhone tarzı drag & drop)
+// =====================================================
+function _menuOrderKey() {
+  if (!currentUser) return null;
+  return 'bmk_menu_order_' + (currentUser.tc || 'demo');
+}
+function loadMenuOrder() {
+  const key = _menuOrderKey();
+  if (!key) return null;
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) { return null; }
+}
+function saveMenuOrder(titles) {
+  const key = _menuOrderKey();
+  if (!key) return;
+  try { localStorage.setItem(key, JSON.stringify(titles)); } catch (_) {}
+}
+function applyMenuOrder(cards) {
+  const order = loadMenuOrder();
+  if (!order || !Array.isArray(order)) return cards;
+  const byTitle = Object.create(null);
+  cards.forEach(c => { byTitle[c.title] = c; });
+  const sorted = [];
+  order.forEach(t => {
+    if (byTitle[t]) { sorted.push(byTitle[t]); delete byTitle[t]; }
+  });
+  cards.forEach(c => { if (byTitle[c.title]) sorted.push(c); });
+  return sorted;
+}
+function _persistCurrentOrder() {
+  const grid = document.getElementById('menuCardGrid');
+  if (!grid) return;
+  const titles = [...grid.querySelectorAll('.menu-card')].map(el => el.dataset.cardKey || '');
+  saveMenuOrder(titles.filter(Boolean));
+}
+
+function toggleMenuEdit() {
+  const grid = document.getElementById('menuCardGrid');
+  const btn  = document.getElementById('menuEditToggle');
+  if (!grid || !btn) return;
+  const active = grid.classList.toggle('edit-mode');
+  btn.classList.toggle('edit-active', active);
+  btn.textContent = active ? '✓' : '✏️';
+  btn.title = active ? 'Düzenlemeyi bitir' : 'Kartları yeniden sırala';
+  // Edit modunda tıklama aksiyonunu devre dışı bırak
+  grid.querySelectorAll('.menu-card').forEach(c => {
+    if (active) {
+      if (!c.hasAttribute('data-orig-onclick')) {
+        c.setAttribute('data-orig-onclick', c.getAttribute('onclick') || '');
+      }
+      c.removeAttribute('onclick');
+    } else if (c.hasAttribute('data-orig-onclick')) {
+      const orig = c.getAttribute('data-orig-onclick');
+      if (orig) c.setAttribute('onclick', orig);
+      c.removeAttribute('data-orig-onclick');
+    }
+  });
+}
+function exitMenuEditMode() {
+  const grid = document.getElementById('menuCardGrid');
+  const btn  = document.getElementById('menuEditToggle');
+  if (!grid || !btn) return;
+  if (grid.classList.contains('edit-mode')) toggleMenuEdit();
+}
+
+let _menuDragInit = false;
+function ensureMenuDragInit() {
+  if (_menuDragInit) return;
+  const grid = document.getElementById('menuCardGrid');
+  if (!grid) return;
+  _menuDragInit = true;
+
+  let dragEl = null, startX = 0, startY = 0, moved = false;
+
+  grid.addEventListener('pointerdown', (e) => {
+    if (!grid.classList.contains('edit-mode')) return;
+    const card = e.target.closest('.menu-card');
+    if (!card) return;
+    dragEl = card;
+    moved = false;
+    startX = e.clientX;
+    startY = e.clientY;
+    card.classList.add('dragging');
+    try { card.setPointerCapture(e.pointerId); } catch (_) {}
+    e.preventDefault();
+  });
+
+  grid.addEventListener('pointermove', (e) => {
+    if (!dragEl) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    if (!moved && Math.hypot(dx, dy) < 4) return;
+    moved = true;
+    dragEl.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(1.04)';
+
+    // Hedef kartı bul (dragEl'i geçici olarak devre dışı bırak)
+    const prevPE = dragEl.style.pointerEvents;
+    dragEl.style.pointerEvents = 'none';
+    const below = document.elementFromPoint(e.clientX, e.clientY);
+    dragEl.style.pointerEvents = prevPE;
+
+    const target = below && below.closest && below.closest('.menu-card');
+    if (target && target !== dragEl && target.parentNode === grid) {
+      const cards = [...grid.children];
+      const curIdx = cards.indexOf(dragEl);
+      const tgtIdx = cards.indexOf(target);
+      if (tgtIdx > curIdx) {
+        grid.insertBefore(dragEl, target.nextSibling);
+      } else {
+        grid.insertBefore(dragEl, target);
+      }
+      // Pozisyon referansı yeni konumdan itibaren
+      startX = e.clientX;
+      startY = e.clientY;
+      dragEl.style.transform = '';
+    }
+  });
+
+  const endDrag = (e) => {
+    if (!dragEl) return;
+    dragEl.classList.remove('dragging');
+    dragEl.style.transform = '';
+    try { dragEl.releasePointerCapture(e.pointerId); } catch (_) {}
+    dragEl = null;
+    if (moved) _persistCurrentOrder();
+  };
+  grid.addEventListener('pointerup', endDrag);
+  grid.addEventListener('pointercancel', endDrag);
+}
+
+// =====================================================
+// DÜĞME BASINÇ GERİ BİLDİRİMİ (ripple + vibrate)
+// =====================================================
+function initPressFeedback() {
+  document.addEventListener('pointerdown', (e) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    const btn = e.target.closest('button, .menu-card');
+    if (!btn || btn.disabled) return;
+    // Edit modundaki kartlar için ripple yok (sürükleme ile karışır)
+    if (btn.classList.contains('menu-card')) {
+      const grid = btn.closest('.card-grid');
+      if (grid && grid.classList.contains('edit-mode')) return;
+    }
+    // Haptik geri bildirim (tüm düğmeler için)
+    try { if (navigator.vibrate) navigator.vibrate(10); } catch (_) {}
+    // Ripple — sadece menu-card'lar için (overflow:hidden + relative garanti)
+    if (!btn.classList.contains('menu-card')) return;
+    const rect = btn.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const size = Math.max(rect.width, rect.height);
+    const ripple = document.createElement('span');
+    ripple.className = 'press-ripple';
+    ripple.style.width  = size + 'px';
+    ripple.style.height = size + 'px';
+    ripple.style.left = (e.clientX - rect.left - size / 2) + 'px';
+    ripple.style.top  = (e.clientY - rect.top  - size / 2) + 'px';
+    btn.appendChild(ripple);
+    setTimeout(() => { ripple.remove(); }, 600);
+  }, { passive: true });
+}
+
+// =====================================================
 // BAŞLANGIÇ
 // =====================================================
 renderDots();
 initSplash();
+initPressFeedback();
 </script>
 </body>
 </html>
