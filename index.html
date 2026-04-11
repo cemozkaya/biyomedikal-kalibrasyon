@@ -2175,8 +2175,8 @@ html, body {
 <!-- pgVeriler için — Excel export ve toplu PDF zip -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<!-- QR kod üretimi (rapor PDF'lerinde kullanılır) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- QR kod üretimi (rapor PDF'lerinde kullanılır) — local, offline çalışır -->
+<script src="qrcode.min.js"></script>
 </head>
 <body>
 
@@ -3737,12 +3737,14 @@ const SEEN_KEYS = {
 //   2) CHANGELOG'un EN ÜSTÜNE yeni bir girdi ekle
 // Login sonrası, kullanıcı daha önce bu sürümü görmediyse popup açılır.
 // =====================================================
-const APP_VERSION = '2026.04.12.2';
+const APP_VERSION = '2026.04.12.3';
 const CHANGELOG = [
   {
-    version: '2026.04.12.2',
-    title: 'Sürüm 12 Nisan 2026 (2)',
+    version: '2026.04.12.3',
+    title: 'Sürüm 12 Nisan 2026 (3)',
     items: [
+      'PDF raporlarındaki QR kod düzeltildi — kütüphane projeye yerel olarak indirildi (internet kesilse bile çalışır)',
+      'QR üretiminde 0×0 container sorunu giderildi, kod artık güvenilir şekilde her sayfada görünecek',
       'Yarım Kalanlar listesi artık herkese sadece kendi taslaklarını gösterir (yalnızca yönetici tüm teknisyenlerin taslaklarını görebilir)',
       'Onaya gönderme sırasında başka kullanıcıya ait bir rapor seçilirse daha açıklayıcı mesaj gösterilir',
       'Veriler ve diğer listelerde "yeni satır" vurgulaması artık durum değişikliklerinde de çalışır: bir taslak onaya gönderildiğinde, onaylandığında, reddedildiğinde veya revizyon istendiğinde ilgili sayfada o rapor "● YENİ" olarak işaretlenir'
@@ -9229,16 +9231,21 @@ function buildRaporQrDataUrl(r) {
   if (!r) return '';
   if (_pdfQrCache.raporNo === r.raporNo && _pdfQrCache.dataUrl) return _pdfQrCache.dataUrl;
   _pdfQrCache = { raporNo: r.raporNo || null, dataUrl: '' };
-  if (typeof QRCode === 'undefined') return ''; // Kütüphane yüklenmemişse sessizce atla
+  if (typeof QRCode === 'undefined') {
+    console.warn('QRCode kütüphanesi yüklenmedi (qrcode.min.js bulunamadı?). PDF QR kodsuz üretilecek.');
+    return '';
+  }
   try {
+    // Off-screen ama gerçek boyutlu container — qrcodejs bazı durumlarda
+    // 0x0 container'da canvas çizmiyor, bu yüzden gerçek boyut veriyoruz.
     const holder = document.createElement('div');
-    holder.style.cssText = 'position:absolute;left:-9999px;top:0;width:0;height:0;overflow:hidden;';
+    holder.style.cssText = 'position:absolute;left:-9999px;top:0;';
     document.body.appendChild(holder);
     // qrcodejs v1.0.0 — canvas + img oluşturur
     new QRCode(holder, {
       text: _buildRaporQrText(r),
-      width: 160,   // yüksek çözünürlük, PDF'te 80x80 px olarak render olur
-      height: 160,
+      width: 200,   // yüksek çözünürlük, PDF'te 80x80 px olarak render olur
+      height: 200,
       colorDark:  '#000000',
       colorLight: '#ffffff',
       correctLevel: QRCode.CorrectLevel.M
@@ -9246,12 +9253,14 @@ function buildRaporQrDataUrl(r) {
     let dataUrl = '';
     const canvas = holder.querySelector('canvas');
     if (canvas && typeof canvas.toDataURL === 'function') {
-      dataUrl = canvas.toDataURL('image/png');
-    } else {
+      try { dataUrl = canvas.toDataURL('image/png'); } catch (_) {}
+    }
+    if (!dataUrl) {
       const img = holder.querySelector('img');
       if (img && img.src) dataUrl = img.src;
     }
     document.body.removeChild(holder);
+    if (!dataUrl) console.warn('QR dataURL boş döndü; kütüphane canvas/img üretemedi');
     _pdfQrCache.dataUrl = dataUrl;
     return dataUrl;
   } catch (e) {
