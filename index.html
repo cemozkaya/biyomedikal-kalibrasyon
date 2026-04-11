@@ -325,6 +325,21 @@ html, body {
   gap: 8px;
   flex-shrink: 0;
 }
+/* Dar ekranlarda sıkışmayı önle */
+@media (max-width: 420px) {
+  .menu-topbar { padding: 10px 10px; gap: 6px; }
+  .menu-topbar .brand { gap: 8px; }
+  .menu-topbar .brand .topbar-logo { width: 32px; height: 32px; }
+  .menu-topbar .brand .brand-text { height: 32px; }
+  .menu-topbar .brand .name { font-size: 0.88rem; }
+  .menu-topbar .brand .sub { font-size: 0.58rem; }
+  .menu-topbar .right { gap: 6px; }
+  .profile-btn .pname { max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+@media (max-width: 360px) {
+  .menu-topbar .brand .sub { display: none; }
+  .profile-btn .pname { max-width: 56px; }
+}
 .profile-btn {
   background: var(--surf);
   border: 1px solid var(--border);
