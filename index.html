@@ -3737,8 +3737,16 @@ const SEEN_KEYS = {
 //   2) CHANGELOG'un EN ÜSTÜNE yeni bir girdi ekle
 // Login sonrası, kullanıcı daha önce bu sürümü görmediyse popup açılır.
 // =====================================================
-const APP_VERSION = '2026.04.11.2';
+const APP_VERSION = '2026.04.12';
 const CHANGELOG = [
+  {
+    version: '2026.04.12',
+    title: 'Sürüm 12 Nisan 2026',
+    items: [
+      'Yarım Kalanlar listesi artık herkese sadece kendi taslaklarını gösterir (yalnızca yönetici tüm teknisyenlerin taslaklarını görebilir)',
+      'Onaya gönderme sırasında başka kullanıcıya ait bir rapor seçilirse daha açıklayıcı mesaj gösterilir'
+    ]
+  },
   {
     version: '2026.04.11.2',
     title: 'Sürüm 11 Nisan 2026 (2)',
@@ -7042,18 +7050,18 @@ async function ykInit(forceReload) {
     !r.onayDurumu || r.onayDurumu === 'draft'
   );
 
-  // Teknisyen → sadece kendi taslakları
+  // Yönetici hariç herkes (teknisyen, müdür, ...) sadece kendi taslaklarını görür
   const role = getPrimaryRole();
-  if (role === 'teknisyen' && currentUser) {
+  if (role !== 'yonetici' && currentUser) {
     ykAllDrafts = ykAllDrafts.filter(r => r.testiUygulayan === currentUser.ad);
   }
 
   // "Yeni" satır vurgusu
   ykNewRowSet = computeAndMarkNewRows(SEEN_KEYS.yarim, ykAllDrafts);
 
-  // Teknisyen filtresini doldur (sadece müdür/yönetici)
+  // Teknisyen filtresini doldur (sadece yönetici — diğerleri zaten tek kişinin taslaklarını görüyor)
   const fltTek = document.getElementById('ykFltTeknisyen');
-  if (role === 'yonetici' || role === 'mudur' || role === 'demo') {
+  if (role === 'yonetici') {
     fltTek.classList.remove('hidden');
     const names = Array.from(new Set(ykAllDrafts.map(r => r.testiUygulayan).filter(Boolean))).sort();
     fltTek.innerHTML = '<option value="">Tüm Teknisyenler</option>' +
