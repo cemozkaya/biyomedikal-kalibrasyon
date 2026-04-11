@@ -572,6 +572,94 @@ html, body {
   justify-content: flex-end;
   padding: 56px 14px 14px;
 }
+
+/* ---------- Güncelleme (changelog) modalı ---------- */
+.changelog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.68);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.changelog-backdrop.hidden { display: none; }
+.changelog-box {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 22px 20px 18px;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+  animation: chPop 0.25s ease-out;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+}
+@keyframes chPop {
+  from { transform: scale(0.92); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+.changelog-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-shrink: 0;
+}
+.changelog-badge {
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+.changelog-title {
+  font-size: 1.02rem;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 0;
+}
+.changelog-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px 0;
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+.changelog-list li {
+  position: relative;
+  padding: 9px 0 9px 24px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+.changelog-list li:last-child { border-bottom: none; }
+.changelog-list li::before {
+  content: '✓';
+  position: absolute;
+  left: 2px;
+  top: 9px;
+  color: var(--accent);
+  font-weight: 700;
+}
+.changelog-box .btn-primary {
+  width: 100%;
+  padding: 11px;
+  font-size: 0.94rem;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  flex-shrink: 0;
+}
 .popup {
   background: var(--bg2);
   border: 1px solid var(--border);
@@ -2638,6 +2726,18 @@ html, body {
   </div>
 </div>
 
+<!-- ================= GÜNCELLEME (CHANGELOG) MODALI ================= -->
+<div class="changelog-backdrop hidden" id="changelogModal">
+  <div class="changelog-box">
+    <div class="changelog-head">
+      <span class="changelog-badge">🎉 YENİ</span>
+      <div class="changelog-title" id="changelogTitle">—</div>
+    </div>
+    <ul class="changelog-list" id="changelogList"></ul>
+    <button class="btn btn-primary" onclick="ackChangelog()">Anladım</button>
+  </div>
+</div>
+
 <!-- Global yükleniyor overlay'i — panel/form açılışlarında gösterilir -->
 <div id="loadingOverlay" class="hidden">
   <div class="lo-box">
@@ -3191,6 +3291,7 @@ function setupMenu() {
 function goToMenu() {
   setupMenu();
   showPage('pgMenu');
+  maybeShowChangelog();
 }
 
 // =====================================================
@@ -3625,6 +3726,55 @@ const SEEN_KEYS = {
   onay:    'bmk_on_seen_raporlar',
   yarim:   'bmk_yk_seen_raporlar'
 };
+
+// =====================================================
+// UYGULAMA SÜRÜMÜ & GÜNCELLEME NOTLARI
+// ---------------------------------------------------
+// Her commit/push'ta:
+//   1) APP_VERSION'ı yeni tarihe güncelle (YYYY.MM.DD)
+//   2) CHANGELOG'un EN ÜSTÜNE yeni bir girdi ekle
+// Login sonrası, kullanıcı daha önce bu sürümü görmediyse popup açılır.
+// =====================================================
+const APP_VERSION = '2026.04.11';
+const CHANGELOG = [
+  {
+    version: '2026.04.11',
+    title: 'Sürüm 11 Nisan 2026',
+    items: [
+      'Menü kartları iPhone tarzı sürükle-bırak ile yeniden sıralanabilir (sağ üstteki ✏️ butonu)',
+      'Her düğmeye basıldığında titreşim ve görsel vurgu geri bildirimi',
+      'Menü üstüne ve açılış ekranına yeni logo eklendi',
+      '"Hatay İSM — Biyomedikal Metroloji" olarak marka güncellemesi',
+      'Demo modunda yeni eklenen raporlar artık vurgulanıyor (taslak, onay, veriler)',
+      'Dar ekranlarda (telefon) üst bar sıkışmıyor, yazılar düzgün kesiliyor',
+      'PWA (Ana Ekrana Ekle) desteği eklendi — telefonda uygulama gibi açılabilir',
+      'Güncelleme bilgilendirme penceresi eklendi (şu an gördüğünüz ekran)'
+    ]
+  }
+];
+
+function maybeShowChangelog() {
+  try {
+    const last = localStorage.getItem('bmk_last_seen_version');
+    if (last === APP_VERSION) return;
+  } catch (_) {}
+  const entry = CHANGELOG[0];
+  if (!entry) return;
+  const modal = document.getElementById('changelogModal');
+  if (!modal) return;
+  const titleEl = document.getElementById('changelogTitle');
+  const listEl  = document.getElementById('changelogList');
+  if (titleEl) titleEl.textContent = entry.title || ('Sürüm ' + entry.version);
+  if (listEl)  listEl.innerHTML = (entry.items || [])
+      .map(it => '<li>' + String(it).replace(/</g, '&lt;') + '</li>').join('');
+  modal.classList.remove('hidden');
+}
+
+function ackChangelog() {
+  try { localStorage.setItem('bmk_last_seen_version', APP_VERSION); } catch (_) {}
+  const modal = document.getElementById('changelogModal');
+  if (modal) modal.classList.add('hidden');
+}
 
 // Demo modu için in-memory seen (localStorage kirletmemek ve fresh başlatmak için).
 // enterDemo'da mevcut DEMO_RAPORLAR'ın raporNo'ları ile doldurulur; böylece demo
