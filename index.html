@@ -1050,8 +1050,9 @@ html, body {
 }
 
 /* ===== "YENİ" SATIR / KART VURGUSU =====
-   Sayfa açıldığında, son ziyaretten sonra eklenen raporları belirgin
-   gösterir. Sayfa yeniden açılınca işaret kaybolur (seen list güncellenir). */
+   Sayfa açıldığında, son ziyaretten sonra eklenen veya DURUMU DEĞİŞEN
+   raporları belirgin gösterir. Durum renkleri: onay=yeşil, red=kırmızı,
+   revizyon=mor, bekliyor=sarı, taslak/varsayılan=sarı. */
 .vr-row-new td {
   background: rgba(255, 193, 7, 0.18) !important;
   animation: vrNewPulse 2.2s ease-in-out infinite;
@@ -1059,15 +1060,43 @@ html, body {
 .vr-row-new td:first-child {
   box-shadow: inset 4px 0 0 0 #f5b400;
 }
+/* Durum bazlı satır vurgusu */
+.vr-row-new-approved td { background: rgba(76, 175, 80, 0.18) !important; animation: vrNewPulseGreen 2.2s ease-in-out infinite; }
+.vr-row-new-approved td:first-child { box-shadow: inset 4px 0 0 0 #4caf50; }
+.vr-row-new-rejected td { background: rgba(244, 67, 54, 0.18) !important; animation: vrNewPulseRed 2.2s ease-in-out infinite; }
+.vr-row-new-rejected td:first-child { box-shadow: inset 4px 0 0 0 #f44336; }
+.vr-row-new-revision td { background: rgba(156, 39, 176, 0.18) !important; animation: vrNewPulsePurple 2.2s ease-in-out infinite; }
+.vr-row-new-revision td:first-child { box-shadow: inset 4px 0 0 0 #9c27b0; }
+.vr-row-new-pending td, .vr-row-new-draft td { background: rgba(255, 193, 7, 0.18) !important; animation: vrNewPulse 2.2s ease-in-out infinite; }
+.vr-row-new-pending td:first-child, .vr-row-new-draft td:first-child { box-shadow: inset 4px 0 0 0 #f5b400; }
+
 .vr-card-new, .yk-card-new {
   outline: 2px solid #f5b400 !important;
   background: rgba(255, 193, 7, 0.10) !important;
   position: relative;
   animation: vrNewPulse 2.2s ease-in-out infinite;
 }
+/* Durum bazlı kart vurgusu */
+.vr-card-new-approved, .yk-card-new-approved { outline: 2px solid #4caf50 !important; background: rgba(76, 175, 80, 0.10) !important; animation: vrNewPulseGreen 2.2s ease-in-out infinite; }
+.vr-card-new-rejected, .yk-card-new-rejected { outline: 2px solid #f44336 !important; background: rgba(244, 67, 54, 0.10) !important; animation: vrNewPulseRed 2.2s ease-in-out infinite; }
+.vr-card-new-revision, .yk-card-new-revision { outline: 2px solid #9c27b0 !important; background: rgba(156, 39, 176, 0.10) !important; animation: vrNewPulsePurple 2.2s ease-in-out infinite; }
+.vr-card-new-pending, .yk-card-new-pending, .vr-card-new-draft, .yk-card-new-draft { outline: 2px solid #f5b400 !important; background: rgba(255, 193, 7, 0.10) !important; animation: vrNewPulse 2.2s ease-in-out infinite; }
+
 @keyframes vrNewPulse {
   0%, 100% { background-color: rgba(255, 193, 7, 0.12); }
   50%      { background-color: rgba(255, 193, 7, 0.28); }
+}
+@keyframes vrNewPulseGreen {
+  0%, 100% { background-color: rgba(76, 175, 80, 0.12); }
+  50%      { background-color: rgba(76, 175, 80, 0.28); }
+}
+@keyframes vrNewPulseRed {
+  0%, 100% { background-color: rgba(244, 67, 54, 0.12); }
+  50%      { background-color: rgba(244, 67, 54, 0.28); }
+}
+@keyframes vrNewPulsePurple {
+  0%, 100% { background-color: rgba(156, 39, 176, 0.12); }
+  50%      { background-color: rgba(156, 39, 176, 0.28); }
 }
 .vr-new-tag {
   display: inline-block;
@@ -1082,6 +1111,10 @@ html, body {
   margin-right: 6px;
   box-shadow: 0 0 0 2px rgba(245, 180, 0, 0.25);
 }
+.vr-new-tag.tag-approved { background: #4caf50; box-shadow: 0 0 0 2px rgba(76,175,80,0.25); }
+.vr-new-tag.tag-rejected { background: #f44336; box-shadow: 0 0 0 2px rgba(244,67,54,0.25); }
+.vr-new-tag.tag-revision { background: #9c27b0; box-shadow: 0 0 0 2px rgba(156,39,176,0.25); }
+.vr-new-tag.tag-pending  { background: #f5b400; box-shadow: 0 0 0 2px rgba(245,180,0,0.25); }
 
 /* GLOBAL LOADING OVERLAY — sayfa geçişlerinde ve veri yüklenirken gösterilir */
 #loadingOverlay {
@@ -3722,11 +3755,14 @@ let vrColFilters     = {};       // { key: Set of values  |  {from,to} }
 let vrSearchTerm     = '';
 let vrLastLoadedAt   = null;
 
-// "Yeni" satır vurgusu — her sayfanın in-memory set'i. vrInit/onInit/ykInit
-// içinde computeAndMarkNewRows ile doldurulur, render fonksiyonları okur.
+// "Yeni" satır vurgusu — her sayfanın in-memory map'i. raporNo → durum (approved/rejected/revision/pending/draft/new).
+// vrInit/onInit/ykInit içinde computeAndMarkNewRows ile doldurulur, render fonksiyonları okur.
 let vrNewRowSet = new Set();
+let vrNewRowMap = new Map();   // raporNo → onayDurumu (durum rengi için)
 let onNewRowSet = new Set();
+let onNewRowMap = new Map();
 let ykNewRowSet = new Set();
+let ykNewRowMap = new Map();
 
 const SEEN_KEYS = {
   veriler: 'bmk_vr_seen_raporlar',
@@ -3742,8 +3778,18 @@ const SEEN_KEYS = {
 //   2) CHANGELOG'un EN ÜSTÜNE yeni bir girdi ekle
 // Login sonrası, kullanıcı daha önce bu sürümü görmediyse popup açılır.
 // =====================================================
-const APP_VERSION = '2026.04.12.5';
+const APP_VERSION = '2026.04.12.6';
 const CHANGELOG = [
+  {
+    version: '2026.04.12.6',
+    title: 'Sürüm 12 Nisan 2026 (6)',
+    items: [
+      'Durum değişikliklerinde renk bazlı vurgu: onaylanan raporlar yeşil, reddedilenler kırmızı, revizyon istenenler mor, bekleyenler sarı olarak vurgulanır',
+      'Vurgu tüm sayfalarda aktif: Veriler, Bekleyen Onaylar ve Yarım Kalanlar',
+      'PIN güvenliği: kullanıcı PIN\'leri artık SHA-256 hash ile saklanıyor (Sheets\'te düz metin görünmez)',
+      'QR kod URL\'si GitHub Pages\'e taşındı'
+    ]
+  },
   {
     version: '2026.04.12.5',
     title: 'Sürüm 12 Nisan 2026 (5)',
@@ -3877,48 +3923,78 @@ function _initDemoSeen() {
   if (!DEMO_RAPORLAR) {
     try { DEMO_RAPORLAR = buildDemoRaporlar(); } catch (_) { DEMO_RAPORLAR = []; }
   }
-  const nos = (DEMO_RAPORLAR || []).map(r => r && r.raporNo).filter(Boolean);
+  const m = new Map();
+  (DEMO_RAPORLAR || []).forEach(r => { if (r && r.raporNo) m.set(r.raporNo, r.onayDurumu || 'draft'); });
   _demoSeen = {
-    [SEEN_KEYS.veriler]: new Set(nos),
-    [SEEN_KEYS.onay]:    new Set(nos),
-    [SEEN_KEYS.yarim]:   new Set(nos)
+    [SEEN_KEYS.veriler]: new Map(m),
+    [SEEN_KEYS.onay]:    new Map(m),
+    [SEEN_KEYS.yarim]:   new Map(m)
   };
 }
 
-// Verilen liste için "yeni" raporNo set'ini hesaplar ve aynı anda seen list'i
-// günceller. İlk run'da (seen hiç yazılmamış) hiçbiri yeni sayılmaz —
-// kullanıcı zaten ilk kez giriyor. Sonraki run'larda seen'de olmayanlar
-// "yeni" olur. Render bittiğinde set in-memory kalır; sayfa tekrar açılınca
-// yeni bir computeAndMarkNewRows çağrısı seen güncel olduğu için boş döner.
+// Verilen liste için "yeni" raporNo set'ini ve durum map'ini hesaplar.
+// Hem yeni eklenen raporları hem de DURUMU DEĞİŞEN raporları yakalar.
+// Seen list artık {raporNo: durum} objesi olarak saklanır (eski array format
+// ile geriye uyumlu — array gelirse durum 'unknown' kabul edilir).
+// Döndürdüğü: { newSet: Set, statusMap: Map(raporNo → durum) }
 function computeAndMarkNewRows(key, list) {
-  let seen = null;
+  let seenMap = null;   // raporNo → durum
   if (isDemo) {
     const existing = _demoSeen[key];
-    if (existing instanceof Set) seen = existing;
+    if (existing instanceof Map) seenMap = existing;
+    else if (existing instanceof Set) {
+      // Eski Set formatından upgrade
+      seenMap = new Map();
+      existing.forEach(no => seenMap.set(no, 'unknown'));
+    }
   } else {
     try {
       const raw = localStorage.getItem(key);
       if (raw !== null) {
-        const arr = JSON.parse(raw);
-        if (Array.isArray(arr)) seen = new Set(arr);
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          // Eski array formatından upgrade
+          seenMap = new Map();
+          parsed.forEach(no => seenMap.set(String(no), 'unknown'));
+        } else if (parsed && typeof parsed === 'object') {
+          seenMap = new Map(Object.entries(parsed));
+        }
       }
     } catch (_) {}
   }
 
-  const currentNos = (list || []).map(r => r && r.raporNo).filter(Boolean);
   const newSet = new Set();
-  if (seen !== null) {
-    currentNos.forEach(no => { if (!seen.has(no)) newSet.add(no); });
+  const statusMap = new Map();
+  if (seenMap !== null) {
+    (list || []).forEach(r => {
+      if (!r || !r.raporNo) return;
+      const no = r.raporNo;
+      const durum = r.onayDurumu || 'draft';
+      if (!seenMap.has(no)) {
+        // Tamamen yeni rapor
+        newSet.add(no);
+        statusMap.set(no, durum);
+      } else if (seenMap.get(no) !== durum && seenMap.get(no) !== 'unknown') {
+        // Durumu değişmiş rapor
+        newSet.add(no);
+        statusMap.set(no, durum);
+      }
+    });
   }
-  // Mevcut listeyi seen olarak yaz — silinen raporlar otomatik temizlenir
+
+  // Mevcut listeyi seen olarak yaz (raporNo → durum)
+  const currentMap = {};
+  (list || []).forEach(r => {
+    if (r && r.raporNo) currentMap[r.raporNo] = r.onayDurumu || 'draft';
+  });
   if (isDemo) {
-    _demoSeen[key] = new Set(currentNos);
+    _demoSeen[key] = new Map(Object.entries(currentMap));
   } else {
     try {
-      localStorage.setItem(key, JSON.stringify(currentNos));
+      localStorage.setItem(key, JSON.stringify(currentMap));
     } catch (_) {}
   }
-  return newSet;
+  return { newSet, statusMap };
 }
 
 // Bir raporu tüm sayfa seen listelerinden çıkarır.
@@ -3930,17 +4006,22 @@ function markRaporAsUnseen(raporNo) {
   Object.keys(SEEN_KEYS).forEach(k => {
     const key = SEEN_KEYS[k];
     if (isDemo) {
-      const set = _demoSeen[key];
-      if (set instanceof Set) set.delete(raporNo);
+      const m = _demoSeen[key];
+      if (m instanceof Map) m.delete(raporNo);
+      else if (m instanceof Set) m.delete(raporNo);
     } else {
       try {
         const raw = localStorage.getItem(key);
         if (!raw) return;
-        const arr = JSON.parse(raw);
-        if (!Array.isArray(arr)) return;
-        const filtered = arr.filter(no => String(no) !== String(raporNo));
-        if (filtered.length !== arr.length) {
-          localStorage.setItem(key, JSON.stringify(filtered));
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const filtered = parsed.filter(no => String(no) !== String(raporNo));
+          if (filtered.length !== parsed.length) localStorage.setItem(key, JSON.stringify(filtered));
+        } else if (parsed && typeof parsed === 'object') {
+          if (raporNo in parsed) {
+            delete parsed[raporNo];
+            localStorage.setItem(key, JSON.stringify(parsed));
+          }
         }
       } catch (_) {}
     }
@@ -4294,8 +4375,10 @@ async function vrInit(forceReload) {
     vrAllRaporlar = vrAllRaporlar.filter(r => r.testiUygulayan === currentUser.ad);
   }
 
-  // "Yeni" satır vurgusu — son ziyaretten sonra eklenen raporları işaretle
-  vrNewRowSet = computeAndMarkNewRows(SEEN_KEYS.veriler, vrAllRaporlar);
+  // "Yeni" satır vurgusu — son ziyaretten sonra eklenen veya durumu değişen raporları işaretle
+  var _vrNew = computeAndMarkNewRows(SEEN_KEYS.veriler, vrAllRaporlar);
+  vrNewRowSet = _vrNew.newSet;
+  vrNewRowMap = _vrNew.statusMap;
 
   // Teknisyen filtresini doldur (sadece yönetici/müdür görür)
   const fltTek = document.getElementById('vrFltTeknisyen');
@@ -4516,9 +4599,12 @@ function vrBuildRow(r, idx) {
   const durum  = vrNormalizeDurum(r);
   const durLbl = VR_DURUM_LABEL[durum];
   let rowCls = (durum === 'rejected') ? 'rejected' : '';
-  if (vrNewRowSet.has(r.raporNo)) rowCls += ' vr-row-new';
+  if (vrNewRowSet.has(r.raporNo)) {
+    const st = vrNewRowMap.get(r.raporNo) || durum;
+    rowCls += ' vr-row-new-' + st;
+  }
   const selCls = vrSelected.has(r.raporNo) ? ' selected' : '';
-  const newTag = vrNewRowSet.has(r.raporNo) ? '<span class="vr-new-tag">● YENİ</span>' : '';
+  const newTag = vrNewRowSet.has(r.raporNo) ? '<span class="vr-new-tag tag-' + (vrNewRowMap.get(r.raporNo) || durum) + '">● YENİ</span>' : '';
 
   // Gelecek kalibrasyon uyarısı
   let gkHtml = vrDate(r.gelecekKalibrasyonTarihi);
@@ -4578,8 +4664,9 @@ function vrRenderCards() {
     const role  = getPrimaryRole();
     const extraDel = (role === 'yonetici' || role === 'mudur' || role === 'demo')
       ? `<button onclick="vrSilTek('${vrEsc(r.raporNo)}')">🗑</button>` : '';
-    const newCls = vrNewRowSet.has(r.raporNo) ? ' vr-card-new' : '';
-    const newTag = vrNewRowSet.has(r.raporNo) ? '<span class="vr-new-tag">● YENİ</span>' : '';
+    const _vrSt2 = vrNewRowMap.get(r.raporNo) || durum;
+    const newCls = vrNewRowSet.has(r.raporNo) ? ' vr-card-new-' + _vrSt2 : '';
+    const newTag = vrNewRowSet.has(r.raporNo) ? '<span class="vr-new-tag tag-' + _vrSt2 + '">● YENİ</span>' : '';
     return `<div class="vr-card ${durum}${newCls}">
       <input type="checkbox" ${vrSelected.has(r.raporNo) ? 'checked' : ''} onclick="vrToggleSelect('${vrEsc(r.raporNo)}', this)">
       <div class="top">
@@ -5414,7 +5501,9 @@ async function onInit(forceReload) {
   // "Yeni" satır vurgusu — sadece pending raporlar üzerinden hesapla
   // (Bekleyenler sekmesinde gösterilen liste). History/stats sekmeleri etkilenmez.
   const onPending = onAllRaporlar.filter(r => r.onayDurumu === 'pending');
-  onNewRowSet = computeAndMarkNewRows(SEEN_KEYS.onay, onPending);
+  var _onNew = computeAndMarkNewRows(SEEN_KEYS.onay, onPending);
+  onNewRowSet = _onNew.newSet;
+  onNewRowMap = _onNew.statusMap;
 
   // Teknisyen filtresini doldur
   const fltTek = document.getElementById('onFltTeknisyen');
@@ -5657,8 +5746,9 @@ function onBuildRowHtml(r) {
   const waitCls = wait >= 3 ? 'danger' : (wait >= 2 ? 'warn' : 'calm');
   const sonuc   = onComputeResult(r);
   const sel     = onSelected.has(r.raporNo) ? ' selected' : '';
-  const newCls  = onNewRowSet.has(r.raporNo) ? ' vr-row-new' : '';
-  const newTag  = onNewRowSet.has(r.raporNo) ? '<span class="vr-new-tag">● YENİ</span>' : '';
+  const _onSt   = onNewRowMap.get(r.raporNo) || 'pending';
+  const newCls  = onNewRowSet.has(r.raporNo) ? ' vr-row-new-' + _onSt : '';
+  const newTag  = onNewRowSet.has(r.raporNo) ? '<span class="vr-new-tag tag-' + _onSt + '">● YENİ</span>' : '';
 
   return `<tr class="${sel}${newCls}">
     <td><input type="checkbox" ${onSelected.has(r.raporNo) ? 'checked' : ''}
@@ -5688,8 +5778,9 @@ function onBuildCardHtml(r) {
   const wait    = onWaitDays(r);
   const waitCls = wait >= 3 ? 'danger' : (wait >= 2 ? 'warn' : 'calm');
   const sonuc   = onComputeResult(r);
-  const newCls  = onNewRowSet.has(r.raporNo) ? ' vr-card-new' : '';
-  const newTag  = onNewRowSet.has(r.raporNo) ? '<span class="vr-new-tag">● YENİ</span>' : '';
+  const _onSt2  = onNewRowMap.get(r.raporNo) || 'pending';
+  const newCls  = onNewRowSet.has(r.raporNo) ? ' vr-card-new-' + _onSt2 : '';
+  const newTag  = onNewRowSet.has(r.raporNo) ? '<span class="vr-new-tag tag-' + _onSt2 + '">● YENİ</span>' : '';
   return `<div class="vr-card pending${newCls}">
     <input type="checkbox" ${onSelected.has(r.raporNo) ? 'checked' : ''}
            onclick="onToggleSelect('${vrEsc(r.raporNo)}', this)">
@@ -7161,7 +7252,9 @@ async function ykInit(forceReload) {
   }
 
   // "Yeni" satır vurgusu
-  ykNewRowSet = computeAndMarkNewRows(SEEN_KEYS.yarim, ykAllDrafts);
+  var _ykNew = computeAndMarkNewRows(SEEN_KEYS.yarim, ykAllDrafts);
+  ykNewRowSet = _ykNew.newSet;
+  ykNewRowMap = _ykNew.statusMap;
 
   // Teknisyen filtresini doldur (sadece yönetici — diğerleri zaten tek kişinin taslaklarını görüyor)
   const fltTek = document.getElementById('ykFltTeknisyen');
@@ -7292,8 +7385,9 @@ function ykBuildCard(r) {
   else if (days === 1) ageStr = 'dün kaydedildi';
   else                 ageStr = days + ' gün önce kaydedildi';
 
-  const newCls = ykNewRowSet.has(r.raporNo) ? ' yk-card-new' : '';
-  const newTag = ykNewRowSet.has(r.raporNo) ? '<span class="vr-new-tag">● YENİ</span>' : '';
+  const _ykSt = ykNewRowMap.get(r.raporNo) || 'draft';
+  const newCls = ykNewRowSet.has(r.raporNo) ? ' yk-card-new-' + _ykSt : '';
+  const newTag = ykNewRowSet.has(r.raporNo) ? '<span class="vr-new-tag tag-' + _ykSt + '">● YENİ</span>' : '';
 
   return `
     <div class="yk-card${newCls}">
