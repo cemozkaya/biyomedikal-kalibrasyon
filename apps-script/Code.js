@@ -197,6 +197,14 @@ function normalizeRole_(s) {
     .trim();
 }
 
+// PIN'i SHA-256 ile hash'ler. Sheets'te artık düz metin PIN saklanmaz.
+function hashPin_(pin) {
+  var raw = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(pin));
+  return raw.map(function(b) {
+    return ('0' + ((b + 256) % 256).toString(16)).slice(-2);
+  }).join('');
+}
+
 // Kullanıcıyı bulur. opts.checkAktif true ise pasif kullanıcılar
 // reddedilir. opts.updateLogin true ise son_giris güncellenir.
 function findUser_(tc, pin, opts) {
@@ -216,7 +224,8 @@ function findUser_(tc, pin, opts) {
   for (let i = 1; i < data.length; i++) {
     const rowTc  = String(data[i][tcCol]).trim();
     const rowPin = String(data[i][pinCol]).trim();
-    if (rowTc === String(tc).trim() && rowPin === String(pin).trim()) {
+    const hashed = hashPin_(pin);
+    if (rowTc === String(tc).trim() && rowPin === hashed) {
       const aktifVal = aktifCol !== -1 ? data[i][aktifCol] : true;
       const aktif = (aktifVal === '' || aktifVal === undefined || aktifVal === null)
         ? true
@@ -834,7 +843,7 @@ function handleAddUser(body) {
         // ile ikinci çağrı için "zaten var" hatası yerine başarılı say —
         // ama farklı veri ise gerçek bir çakışma var, hata döndür.
         const sameAd  = String(data[i][adCol] || '') === String(u.ad);
-        const samePin = String(data[i][pinCol] || '') === String(u.pin);
+        const samePin = String(data[i][pinCol] || '') === hashPin_(u.pin);
         if (sameAd && samePin) {
           return { ok: true, alreadyExists: true };
         }
@@ -843,6 +852,7 @@ function handleAddUser(body) {
     }
     // Satırı USER_COLS sırasına göre oluştur
     const row = USER_COLS.map(col => {
+      if (col === 'pin')    return hashPin_(u.pin);
       if (col === 'roller') return (u.roller || []).join(',');
       if (col === 'aktif')  return u.aktif !== false;
       if (col === 'son_giris') return '';
@@ -877,7 +887,7 @@ function handleUpdateUser(body) {
         if (u.aktif !== undefined) sheet.getRange(rowNum, headers.indexOf('aktif') + 1).setValue(u.aktif === true);
         if (u.pin) {
           if (!/^\d{4}$/.test(String(u.pin))) return { ok: false, error: 'pin_format' };
-          sheet.getRange(rowNum, headers.indexOf('pin') + 1).setValue(u.pin);
+          sheet.getRange(rowNum, headers.indexOf('pin') + 1).setValue(hashPin_(u.pin));
         }
         return { ok: true };
       }
@@ -929,7 +939,7 @@ function handleResetUserPin(body) {
     const tcCol = headers.indexOf('tc');
     for (let i = 1; i < data.length; i++) {
       if (String(data[i][tcCol]) === String(body.targetTc)) {
-        sheet.getRange(i + 1, headers.indexOf('pin') + 1).setValue(body.newPin);
+        sheet.getRange(i + 1, headers.indexOf('pin') + 1).setValue(hashPin_(body.newPin));
         return { ok: true };
       }
     }
@@ -957,7 +967,7 @@ function handleChangeOwnPin(body) {
     const tcCol = headers.indexOf('tc');
     for (let i = 1; i < data.length; i++) {
       if (String(data[i][tcCol]) === String(body.tc)) {
-        sheet.getRange(i + 1, headers.indexOf('pin') + 1).setValue(body.newPin);
+        sheet.getRange(i + 1, headers.indexOf('pin') + 1).setValue(hashPin_(body.newPin));
         return { ok: true };
       }
     }
@@ -965,6 +975,31 @@ function handleChangeOwnPin(body) {
   } finally {
     lock.releaseLock();
   }
+}
+
+// =====================================================
+// MİGRASYON — mevcut düz metin PIN'leri SHA-256 hash'e çevirir.
+// Apps Script editöründe bir kez çalıştır: migratePinsToHash()
+// Zaten hash'lenmiş (64 karakter hex) PIN'lere dokunmaz.
+// =====================================================
+function migratePinsToHash() {
+  var sheet = getSheet_('Kullanicilar');
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String);
+  var pinCol = headers.indexOf('pin');
+  if (pinCol === -1) throw new Error('pin kolonu bulunamadı');
+
+  var data = sheet.getDataRange().getValues();
+  var count = 0;
+  for (var i = 1; i < data.length; i++) {
+    var val = String(data[i][pinCol]).trim();
+    // 64 hex karakter = zaten hash'lenmiş, atla
+    if (/^[0-9a-f]{64}$/.test(val)) continue;
+    if (!val) continue;
+    sheet.getRange(i + 1, pinCol + 1).setValue(hashPin_(val));
+    count++;
+  }
+  Logger.log(count + ' PIN hash\'e çevrildi.');
+  return count;
 }
 
 // =====================================================
