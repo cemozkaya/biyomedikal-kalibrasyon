@@ -3740,6 +3740,7 @@ const VR_COLUMNS = [
   { key: 'gelKalib',     label: 'Gel.Kalib.',sortable: true,  filterType: null,      visible: true  },
   { key: 'testiUygulayan', label: 'Teknisyen', sortable: true, filterType: 'values', visible: true  },
   { key: 'onayDurumu',   label: 'Durum',     sortable: true,  filterType: 'values',  visible: true  },
+  { key: 'onayTarihi',   label: 'Onay Tarihi', sortable: true, filterType: null,     visible: true  },
   { key: 'actions',      label: 'İşlem',     sortable: false, filterType: null,      visible: true  }
 ];
 
@@ -3778,8 +3779,17 @@ const SEEN_KEYS = {
 //   2) CHANGELOG'un EN ÜSTÜNE yeni bir girdi ekle
 // Login sonrası, kullanıcı daha önce bu sürümü görmediyse popup açılır.
 // =====================================================
-const APP_VERSION = '2026.04.12.6';
+const APP_VERSION = '2026.04.15';
 const CHANGELOG = [
+  {
+    version: '2026.04.15',
+    title: 'Sürüm 15 Nisan 2026',
+    items: [
+      'Veriler sekmesine "Onay Tarihi" sütunu eklendi — onaylanan raporların onay tarihini gösterir',
+      'Onay Tarihi sütunu sıralanabilir (A-Z / Z-A); Sütunlar ayarından gizlenip gösterilebilir',
+      'Demo modunda da onay tarihleri dolu gelir'
+    ]
+  },
   {
     version: '2026.04.12.6',
     title: 'Sürüm 12 Nisan 2026 (6)',
@@ -4635,6 +4645,7 @@ function vrBuildRow(r, idx) {
       case 'gelKalib':     return `<td>${gkHtml}</td>`;
       case 'testiUygulayan': return `<td>${vrEsc(r.testiUygulayan || '—')}</td>`;
       case 'onayDurumu':   return `<td><span class="vr-badge ${durum}">${durLbl}</span></td>`;
+      case 'onayTarihi':   return `<td>${r.onayTarihi ? vrDate(r.onayTarihi) : '—'}</td>`;
       case 'actions': {
         const role = getPrimaryRole();
         let acts = `<button class="row-act" onclick="vrOpenDetay('${vrEsc(r.raporNo)}')">👁 Detay</button>`;
