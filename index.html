@@ -51,27 +51,37 @@ html, body {
 /* Butonları SADECE bu class ile gizle */
 .hidden { display: none !important; }
 
-/* Sağ kenar "sola kaydır → menü" jest bölgesi. Görünmez bir şerit;
-   sadece burada başlayan yatay hareketler jesti tetikler, böylece
-   ekranın başka yerinde dikey scroll hiç etkilenmez. Varsayılan
-   touch-action pan-y: dikey scroll hâlâ mümkün. Yatay baskınlık
-   tespit edilince JS preventDefault ile jesti sahipleniyor. */
+/* Sağ kenar "sola kaydır → menü" jest bölgesi. touch-action:none ile
+   bölge içinde hiçbir tarayıcı dokunma davranışı çalışmaz (dikey scroll,
+   zoom, pull-to-refresh vs). Sadece sola kaydırma jesti çalışır. Bölge
+   dışında scroll tamamen serbesttir. Sağ kenarda ince bir işaret (2px)
+   kullanıcıya bölgenin nerede olduğunu gösterir. */
 #edgeSwipeZone {
   position: fixed;
   top: 0;
   right: 0;
-  width: 18px;
+  width: 24px;
   height: 100%;
-  z-index: 50;
+  z-index: 9999;
   background: transparent;
-  touch-action: pan-y;
+  touch-action: none;
+  -ms-touch-action: none;
   display: none;
 }
 #edgeSwipeZone.active { display: block; }
-/* Jest commit edilince kısa süre görünür bir iz bırak (kullanıcı jestin
-   alındığını anlasın). */
+#edgeSwipeZone::after {
+  content: '';
+  position: absolute;
+  top: 35%;
+  right: 2px;
+  bottom: 35%;
+  width: 3px;
+  border-radius: 2px;
+  background: rgba(200, 16, 46, 0.28);
+  pointer-events: none;
+}
 #edgeSwipeZone.committed {
-  background: linear-gradient(to left, rgba(200, 16, 46, 0.18), transparent);
+  background: linear-gradient(to left, rgba(200, 16, 46, 0.22), transparent);
 }
 
 /* ========== SAYFA YÖNETİMİ ========== */
@@ -3900,8 +3910,18 @@ const SEEN_KEYS = {
 //   2) CHANGELOG'un EN ÜSTÜNE yeni bir girdi ekle
 // Login sonrası, kullanıcı daha önce bu sürümü görmediyse popup açılır.
 // =====================================================
-const APP_VERSION = '2026.04.15.7';
+const APP_VERSION = '2026.04.15.8';
 const CHANGELOG = [
+  {
+    version: '2026.04.15.8',
+    title: 'Sürüm 15 Nisan 2026 (8)',
+    items: [
+      'Sağ kenar jest bölgesi artık görünür bir ince kırmızı işaret ile belirtiliyor — kullanıcı nereden kaydıracağını biliyor',
+      'Bölge içinde tarayıcı dokunma davranışı tamamen kapalı (touch-action: none) — dikey scroll, pull-to-refresh vs. bu 24 piksellik şeritte asla çalışmaz',
+      'Sadece sola kaydırma jesti çalışır ve 70 px eşiğini aşınca ana menüye döner',
+      'Bölge genişliği 18 → 24 piksele çıkarıldı, z-index yükseltildi (her zaman en üstte)'
+    ]
+  },
   {
     version: '2026.04.15.7',
     title: 'Sürüm 15 Nisan 2026 (7)',
@@ -11156,19 +11176,20 @@ initEdgeSwipeBack();
 // Telefon ekranının sağ kenarından parmağı sola kaydırınca ana menüye döner.
 // Sadece küçük ekranlarda (<=900px) aktif. Modal veya login/menü sayfalarında
 // tetiklenmez. Dikey kaydırma ile çakışmaması için yatay hareket baskın olmalı.
-// "Sola kaydır → ana menü" jesti — sadece sağ kenardaki dar (18px) görünmez
-// şeritten başlayan dokunuşlar dinlenir. Böylece ekranın geri kalanında
-// dikey scroll hiçbir şekilde etkilenmez. Jest bölgesi yalnızca uygun
-// sayfalarda mobil genişlikte aktif olur (bkz. _updateEdgeZone).
+// "Sola kaydır → ana menü" jesti. touch-action:none ile bölge içinde
+// tarayıcı dokunma davranışı kapalı; dolayısıyla preventDefault gerekmiyor
+// ve dikey/yatay ayrımı JS'te yapılıyor. Bölge dışı dokunuşlar tamamen
+// serbest — hiç dinlenmiyor.
 function initEdgeSwipeBack() {
   const zone = document.getElementById('edgeSwipeZone');
   if (!zone) return;
-  let sx = 0, sy = 0, sT = 0, tracking = false, committed = false;
-  const THX    = 90;   // menüye dönüş için minimum yatay hareket
-  const MAXT   = 700;  // maksimum süre (ms)
-  const CLAIM  = 18;   // bu kadar sola gittiğinde dikey scroll'u kes
+  let sx = 0, sy = 0, sT = 0, tracking = false;
+  const THX    = 70;   // menüye dönüş için minimum yatay hareket (px)
+  const MAXT   = 800;  // maksimum süre (ms)
+  const COMMIT = 20;   // yatay bu kadar sola gittiğinde "commit" görsel iz
   zone.addEventListener('touchstart', (e) => {
-    tracking = false; committed = false;
+    tracking = false;
+    zone.classList.remove('committed');
     if (!e.touches || e.touches.length !== 1) return;
     if (document.querySelector('.vr-modal, .md-modal, .modal.active, [id$="Modal"]:not(.hidden)')) return;
     const t = e.touches[0];
@@ -11177,33 +11198,25 @@ function initEdgeSwipeBack() {
   zone.addEventListener('touchmove', (e) => {
     if (!tracking || !e.touches || e.touches.length !== 1) return;
     const t = e.touches[0];
-    const dx = t.clientX - sx, dy = t.clientY - sy;
-    if (!committed) {
-      // Dikey baskınsa jesti bırak, scroll serbest kalsın
-      if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) { tracking = false; return; }
-      // Yatay (sola) yeterince gittiyse gesture'ı sahiplen
-      if (-dx >= CLAIM && Math.abs(dx) > Math.abs(dy)) {
-        committed = true;
-        zone.classList.add('committed');
-      }
-    }
-    if (committed) { try { e.preventDefault(); } catch (_) {} }
-  }, { passive: false });
-  const cleanup = () => { zone.classList.remove('committed'); tracking = false; committed = false; };
-  zone.addEventListener('touchend', (e) => {
-    if (!tracking) { cleanup(); return; }
-    const wasCommitted = committed;
-    const t = (e.changedTouches && e.changedTouches[0]);
-    cleanup();
-    if (!t) return;
+    const dx = t.clientX - sx;
+    if (-dx >= COMMIT) zone.classList.add('committed');
+    else               zone.classList.remove('committed');
+  }, { passive: true });
+  const finish = (e, trigger) => {
+    zone.classList.remove('committed');
+    if (!tracking) return;
+    tracking = false;
+    if (!trigger) return;
+    const t = (e.changedTouches && e.changedTouches[0]); if (!t) return;
     const dx = t.clientX - sx, dy = t.clientY - sy, dt = Date.now() - sT;
     if (dt > MAXT) return;
     if (-dx < THX) return;
-    if (!wasCommitted && Math.abs(dy) > Math.abs(dx)/2) return;
+    if (Math.abs(dy) > Math.abs(dx)) return;   // dikey baskınsa iptal
     if (typeof currentUser === 'undefined' || !currentUser) return;
     if (typeof goBackToMenu === 'function') goBackToMenu();
-  }, { passive: true });
-  zone.addEventListener('touchcancel', cleanup, { passive: true });
+  };
+  zone.addEventListener('touchend',    (e) => finish(e, true),  { passive: true });
+  zone.addEventListener('touchcancel', (e) => finish(e, false), { passive: true });
 }
 
 // Jest bölgesini (edgeSwipeZone) doğru sayfalarda göster/gizle:
