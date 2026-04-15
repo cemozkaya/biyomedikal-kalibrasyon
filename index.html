@@ -2875,6 +2875,48 @@ let activeField = 'tc'; // 'tc' | 'pin'
 function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  // Kaldığı sayfayı hatırla (Android'de PWA uyanırken tam reload olduğunda
+  // kullanıcı son gördüğü sayfaya dönsün). Her kullanıcı kendi TC'si ile.
+  try {
+    if (RESUMABLE_PAGES.has(id) && typeof currentUser !== 'undefined' && currentUser && currentUser.tc) {
+      localStorage.setItem('bmk_last_page_' + currentUser.tc, id);
+    }
+  } catch (_) {}
+}
+
+// Splash/Login dışındaki, durumu sunucudan yeniden yüklenebilen sayfalar
+const RESUMABLE_PAGES = new Set([
+  'pgMenu', 'pgVeriler', 'pgOnay', 'pgYarimKalanlar', 'pgKullanici'
+]);
+const RESUMABLE_HANDLERS = {
+  pgMenu:          () => goToMenu(),
+  pgVeriler:       () => goVeriler(),
+  pgOnay:          () => goOnay(),
+  pgYarimKalanlar: () => goYarimKalanlar(),
+  pgKullanici:     () => goKullanici()
+};
+function _loadLastPage() {
+  try {
+    if (!currentUser || !currentUser.tc) return null;
+    const id = localStorage.getItem('bmk_last_page_' + currentUser.tc);
+    return id && RESUMABLE_PAGES.has(id) ? id : null;
+  } catch (_) { return null; }
+}
+function _clearLastPage() {
+  try {
+    if (currentUser && currentUser.tc) {
+      localStorage.removeItem('bmk_last_page_' + currentUser.tc);
+    }
+  } catch (_) {}
+}
+// Auto-login sonrası kaldığı sayfaya dönmeyi dene; mümkün değilse menüye.
+async function resumeOrGoToMenu() {
+  const last = _loadLastPage();
+  if (last && last !== 'pgMenu' && RESUMABLE_HANDLERS[last]) {
+    try { await RESUMABLE_HANDLERS[last](); return; }
+    catch (_) { /* düş → menü */ }
+  }
+  goToMenu();
 }
 
 function goBackToMenu() {
@@ -3038,6 +3080,11 @@ async function tryAutoLogin() {
     isDemo = false;
     hideError();
     rememberTc(remembered.tc);
+    // Android'de PWA yeniden başlatıldıysa kaldığı sayfaya dön; yoksa normal akış
+    const last = _loadLastPage();
+    if (last && last !== 'pgMenu' && RESUMABLE_HANDLERS[last]) {
+      try { await RESUMABLE_HANDLERS[last](); return true; } catch (_) {}
+    }
     goAfterLogin();
     return true;
   } catch (err) {
@@ -3823,8 +3870,17 @@ const SEEN_KEYS = {
 //   2) CHANGELOG'un EN ÜSTÜNE yeni bir girdi ekle
 // Login sonrası, kullanıcı daha önce bu sürümü görmediyse popup açılır.
 // =====================================================
-const APP_VERSION = '2026.04.15.5';
+const APP_VERSION = '2026.04.15.6';
 const CHANGELOG = [
+  {
+    version: '2026.04.15.6',
+    title: 'Sürüm 15 Nisan 2026 (6)',
+    items: [
+      'Android\'de uygulamayı arka plana atıp tekrar açınca artık ana menüye düşmüyor; kullanıcı kaldığı sayfaya (Veriler / Bekleyen Onaylar / Yarım Kalanlar / Kullanıcı Yönetimi) otomatik geri dönüyor',
+      'Sağdan sola kaydırma (ana menüye dön) jesti artık dikey kaymayı engelliyor — aynı anda sayfa aşağı kaymıyor',
+      'Yatay hareket belirginleştiği anda jest hareketi "sahipleniyor", dikey kaydırma belirgin ise jest iptal ediliyor'
+    ]
+  },
   {
     version: '2026.04.15.5',
     title: 'Sürüm 15 Nisan 2026 (5)',
@@ -8199,6 +8255,7 @@ function kuOpenAktivite(tc) {
 function logout() {
   // Çıkış → "Beni hatırla" kaydını temizle (yoksa hemen tekrar otomatik girilir)
   clearRememberedLogin();
+  _clearLastPage();
   const cb = document.getElementById('rememberLogin');
   if (cb) cb.checked = false;
 
@@ -11060,11 +11117,13 @@ initEdgeSwipeBack();
 // Sadece küçük ekranlarda (<=900px) aktif. Modal veya login/menü sayfalarında
 // tetiklenmez. Dikey kaydırma ile çakışmaması için yatay hareket baskın olmalı.
 function initEdgeSwipeBack() {
-  let sx = 0, sy = 0, sT = 0, tracking = false;
+  let sx = 0, sy = 0, sT = 0, tracking = false, committed = false;
   const EDGE   = 30;   // sağ kenar eşiği (px)
   const THX    = 80;   // minimum yatay hareket
   const MAXT   = 600;  // maksimum süre (ms)
+  const CLAIM  = 14;   // yatay hareket bu eşiği geçince dikey scroll'u iptal et
   document.addEventListener('touchstart', (e) => {
+    tracking = false; committed = false;
     if (window.innerWidth > 900) return;
     if (!e.touches || e.touches.length !== 1) return;
     const t = e.touches[0];
@@ -11073,14 +11132,28 @@ function initEdgeSwipeBack() {
     if (document.querySelector('.vr-modal, .md-modal, .modal.active, [id$="Modal"]:not(.hidden)')) return;
     sx = t.clientX; sy = t.clientY; sT = Date.now(); tracking = true;
   }, { passive: true });
+  // touchmove passive:false — yatay swipe baskın olduğunda dikey kaymayı iptal et
+  document.addEventListener('touchmove', (e) => {
+    if (!tracking || !e.touches || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    const dx = t.clientX - sx, dy = t.clientY - sy;
+    if (!committed) {
+      // Kullanıcı belirgin şekilde dikey gidiyorsa gesture'ı bırak (scroll serbest)
+      if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { tracking = false; return; }
+      // Yatay (sola) baskın → bize ait
+      if (-dx >= CLAIM && Math.abs(dx) > Math.abs(dy)) committed = true;
+    }
+    if (committed) { try { e.preventDefault(); } catch (_) {} }
+  }, { passive: false });
   document.addEventListener('touchend', (e) => {
     if (!tracking) return;
-    tracking = false;
+    const wasCommitted = committed;
+    tracking = false; committed = false;
     const t = (e.changedTouches && e.changedTouches[0]); if (!t) return;
     const dx = t.clientX - sx, dy = t.clientY - sy, dt = Date.now() - sT;
     if (dt > MAXT) return;
-    if (-dx < THX) return;               // yeterince sola gitmedi
-    if (Math.abs(dy) > Math.abs(dx)/2) return; // dikey baskın → scroll
+    if (-dx < THX) return;                      // yeterince sola gitmedi
+    if (!wasCommitted && Math.abs(dy) > Math.abs(dx)/2) return; // dikey baskın
     // Aktif sayfa menü veya login ise çık
     const active = document.querySelector('.page.active');
     if (!active) return;
@@ -11088,6 +11161,9 @@ function initEdgeSwipeBack() {
     if (id === 'pgMenu' || id === 'pgLogin' || id === 'pgSplash') return;
     if (typeof currentUser === 'undefined' || !currentUser) return;
     if (typeof goBackToMenu === 'function') goBackToMenu();
+  }, { passive: true });
+  document.addEventListener('touchcancel', () => {
+    tracking = false; committed = false;
   }, { passive: true });
 }
 </script>
