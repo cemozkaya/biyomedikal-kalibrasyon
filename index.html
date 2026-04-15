@@ -835,6 +835,38 @@ html, body {
 .vr-stat.green  { border-left-color: var(--green); }
 .vr-stat.yellow { border-left-color: var(--yellow); }
 .vr-stat.red    { border-left-color: var(--red); }
+/* Sütun reorder (modal listesi) */
+.vr-col-list { display: flex; flex-direction: column; gap: 2px; }
+.vr-col-row {
+  display: flex; align-items: center; gap: 8px; padding: 6px 8px;
+  border: 1px solid var(--border); border-radius: 6px; background: var(--bg2);
+  user-select: none; -webkit-user-select: none;
+}
+.vr-col-handle {
+  cursor: grab; padding: 4px 8px; color: var(--text2);
+  font-size: 1.1rem; touch-action: none; line-height: 1;
+}
+.vr-col-handle:active { cursor: grabbing; }
+.vr-col-row.vr-col-dragging {
+  position: fixed !important; z-index: 10000;
+  box-shadow: 0 8px 24px rgba(0,0,0,.35); opacity: .92; pointer-events: none;
+}
+.vr-col-placeholder {
+  border: 2px dashed var(--text3); border-radius: 6px;
+  background: rgba(59,130,246,.08); margin: 0;
+}
+/* Thead reorder */
+th.vr-th-draggable { cursor: grab; touch-action: pan-y; }
+th.vr-th-dragging  { opacity: .55; cursor: grabbing; }
+th.vr-th-over      { background: rgba(59,130,246,.15) !important; outline: 2px dashed #3b82f6; outline-offset: -2px; }
+
+.vr-stat.clickable { cursor: pointer; transition: background .15s, transform .05s; user-select: none; -webkit-user-select: none; }
+.vr-stat.clickable:hover { background: var(--bg3, var(--bg2)); }
+.vr-stat.clickable:active { transform: scale(0.98); }
+.vr-stat.active.blue   { background: rgba(59,130,246,.12); border-left-width: 5px; }
+.vr-stat.active.green  { background: rgba(34,197,94,.12); border-left-width: 5px; }
+.vr-stat.active.yellow { background: rgba(234,179,8,.12); border-left-width: 5px; }
+.vr-stat.active.red    { background: rgba(239,68,68,.12); border-left-width: 5px; }
 
 /* UYARI BANNER */
 .vr-banner {
@@ -2472,6 +2504,7 @@ html, body {
     <h2>⏳ Bekleyen Onaylar <span class="on-pendcount" id="onPendCount">0</span></h2>
     <span class="vh-time" id="onLastUpdate"></span>
     <button class="vh-btn" onclick="onRefresh()">🔄 Yenile</button>
+    <button class="vh-btn" onclick="onOpenColumnsModal()">⚙️ Sütunlar</button>
   </div>
 
   <div class="on-tabs">
@@ -3716,6 +3749,7 @@ const VR_LS = {
   search:  'bmk_vr_search_history',
   favs:    'bmk_vr_fav_filters',
   cols:    'bmk_vr_visible_cols',
+  colOrder:'bmk_vr_col_order',
   cache:   'bmk_vr_cache'
 };
 
@@ -3779,8 +3813,34 @@ const SEEN_KEYS = {
 //   2) CHANGELOG'un EN ÜSTÜNE yeni bir girdi ekle
 // Login sonrası, kullanıcı daha önce bu sürümü görmediyse popup açılır.
 // =====================================================
-const APP_VERSION = '2026.04.15';
+const APP_VERSION = '2026.04.15.4';
 const CHANGELOG = [
+  {
+    version: '2026.04.15.4',
+    title: 'Sürüm 15 Nisan 2026 (4)',
+    items: [
+      'Veriler sekmesinde 20\'den sonraki satırlar artık sonsuz scroll ile düzgün yükleniyor (yükseklik hesaplamasındaki hata giderildi)',
+      'Güncelleme bilgilendirme penceresi artık her kullanıcı için kendi TC\'sine göre sadece bir defa açılır; aynı cihazdaki farklı kullanıcılar kendi sürüm notunu görür'
+    ]
+  },
+  {
+    version: '2026.04.15.3',
+    title: 'Sürüm 15 Nisan 2026 (3)',
+    items: [
+      'Bekleyen Onaylar sekmesine "⚙️ Sütunlar" eklendi — sütunlar gizlenip gösterilebilir ve sürüklenerek yeniden sıralanabilir (modal ☰ tutamacı veya tablo başlığından)',
+      'Bekleyen Onaylar üstündeki istatistik kutuları artık tıklanabilir: "Bekleyen" bekleyenler sekmesine götürür; "Bu ay onaylanan" ve "Bu ay reddedilen" Geçmiş sekmesinde ilgili duruma göre bu ay filtresi uygular; "Ort. onay süresi" İstatistikler sekmesini açar'
+    ]
+  },
+  {
+    version: '2026.04.15.2',
+    title: 'Sürüm 15 Nisan 2026 (2)',
+    items: [
+      'Veriler sekmesinde sütunlar artık sürüklenerek yeniden sıralanabilir: "Sütunlar" modalındaki ☰ tutamacıyla veya doğrudan tablo başlığından (fare/dokunmatik)',
+      'Üstteki istatistik kutuları (Onaylanan / Bekleyen / Reddedilen) tıklanınca tabloyu ilgili duruma göre otomatik filtreler; tekrar tıklayınca filtre kalkar',
+      'Onay Tarihi sütunundaki tarih biçimi düzeltildi (ISO zaman damgaları da düzgün görünüyor)',
+      'Telefonda sağ kenardan sola kaydırma hareketi ana menüye döndürür'
+    ]
+  },
   {
     version: '2026.04.15',
     title: 'Sürüm 15 Nisan 2026',
@@ -3845,9 +3905,16 @@ const CHANGELOG = [
   }
 ];
 
+// Güncelleme bilgi ekranı her kullanıcı için her sürümde sadece bir kez açılır.
+// Anahtar kullanıcı TC'sine göre ayrılır; böylece aynı cihazda farklı kullanıcılar
+// giriş yaptığında her biri kendi için notu bir defa görür.
+function _changelogSeenKey() {
+  const tc = (typeof currentUser !== 'undefined' && currentUser && currentUser.tc) ? currentUser.tc : 'anon';
+  return 'bmk_last_seen_version_' + tc;
+}
 function maybeShowChangelog() {
   try {
-    const last = localStorage.getItem('bmk_last_seen_version');
+    const last = localStorage.getItem(_changelogSeenKey());
     if (last === APP_VERSION) return;
   } catch (_) {}
   const entry = CHANGELOG[0];
@@ -3863,7 +3930,7 @@ function maybeShowChangelog() {
 }
 
 function ackChangelog() {
-  try { localStorage.setItem('bmk_last_seen_version', APP_VERSION); } catch (_) {}
+  try { localStorage.setItem(_changelogSeenKey(), APP_VERSION); } catch (_) {}
   const modal = document.getElementById('changelogModal');
   if (modal) modal.classList.add('hidden');
 }
@@ -4501,15 +4568,27 @@ function vrRenderStats() {
   // Burada filtre uygulanmadan tüm (yetkili) raporlar üzerinden istatistik:
   const all = vrAllRaporlar;
   const count = d => all.filter(r => vrNormalizeDurum(r) === d).length;
+  const sel = (document.getElementById('vrFltDurum') || {}).value || '';
   const html =
-    vrStatCard('blue',   '📊 Toplam',    all.length) +
-    vrStatCard('green',  '✅ Onaylanan', count('approved')) +
-    vrStatCard('yellow', '⏳ Bekleyen',  count('pending')) +
-    vrStatCard('red',    '❌ Reddedilen',count('rejected'));
+    vrStatCard('blue',   '📊 Toplam',    all.length,      'all',       sel) +
+    vrStatCard('green',  '✅ Onaylanan', count('approved'),'approved',  sel) +
+    vrStatCard('yellow', '⏳ Bekleyen',  count('pending'), 'pending',   sel) +
+    vrStatCard('red',    '❌ Reddedilen',count('rejected'),'rejected',  sel);
   document.getElementById('vrStats').innerHTML = html;
 }
-function vrStatCard(cls, lbl, val) {
-  return `<div class="vr-stat ${cls}"><div class="lbl">${lbl}</div><div class="val">${val}</div></div>`;
+function vrStatCard(cls, lbl, val, durum, selected) {
+  if (!durum) return `<div class="vr-stat ${cls}"><div class="lbl">${lbl}</div><div class="val">${val}</div></div>`;
+  const isAll  = durum === 'all';
+  const active = isAll ? (!selected ? 'active' : '') : (durum === selected ? 'active' : '');
+  const onclick = `onclick="vrToggleDurumFilter('${durum}')"`;
+  return `<div class="vr-stat ${cls} clickable ${active}" ${onclick}><div class="lbl">${lbl}</div><div class="val">${val}</div></div>`;
+}
+function vrToggleDurumFilter(durum) {
+  const sel = document.getElementById('vrFltDurum');
+  if (!sel) return;
+  if (durum === 'all')       sel.value = '';
+  else                       sel.value = (sel.value === durum) ? '' : durum;
+  vrApplyFilters();
 }
 
 // ---------- RENDER: BANNER ----------
@@ -4556,7 +4635,7 @@ function vrRenderThead() {
   const thead = document.getElementById('vrThead');
   const cells = VR_COLUMNS.filter(c => c.visible).map(c => {
     if (c.key === 'rowCheck') {
-      return `<th style="width:36px;"><input type="checkbox" id="vrSelAll" onclick="vrToggleSelectAll(this)"></th>`;
+      return `<th data-col="rowCheck" style="width:36px;"><input type="checkbox" id="vrSelAll" onclick="vrToggleSelectAll(this)"></th>`;
     }
     const sortActive = (c.key === vrSortKey);
     const sortInd = sortActive ? (vrSortDir === 'asc' ? ' ↑' : ' ↓') : ' ↕';
@@ -4565,11 +4644,13 @@ function vrRenderThead() {
       ? `<span class="col-filter" onclick="event.stopPropagation(); vrOpenColPop(event, '${c.key}', '${c.filterType}')">▼</span>`
       : '';
     const clickable = c.sortable ? `onclick="vrSortBy('${c.key}')"` : '';
-    return `<th class="${sortActive ? 'sort-active' : ''}${filtered}" ${clickable}>
+    const drag = vrIsReorderable(c.key) ? ' vr-th-draggable' : '';
+    return `<th data-col="${c.key}" class="${sortActive ? 'sort-active' : ''}${filtered}${drag}" ${clickable}>
       ${vrEsc(c.label)}${c.sortable ? `<span class="sort-ind">${sortInd}</span>` : ''}${filterBtn}
     </th>`;
   }).join('');
   thead.innerHTML = '<tr>' + cells + '</tr>';
+  vrInitTheadReorder();
 }
 
 function vrSortBy(key) {
@@ -4699,11 +4780,21 @@ function vrRenderCards() {
 }
 
 // ---------- SONSUZ SCROLL ----------
+// Not: body { height:100% } olduğundan document.body.offsetHeight içerik
+// yüksekliğini yansıtmaz. Gerçek içerik için scrollHeight kullanılır.
+function vrPageScrollHeight() {
+  return Math.max(
+    document.documentElement.scrollHeight || 0,
+    document.body.scrollHeight || 0
+  );
+}
+function vrNearBottom(margin) {
+  return (window.innerHeight + window.scrollY) >= vrPageScrollHeight() - (margin || 200);
+}
 window.addEventListener('scroll', function () {
   if (!document.getElementById('pgVeriler').classList.contains('active')) return;
   if (vrRenderCount >= vrVisibleRaporlar.length) return;
-  const scrollBottom = window.innerHeight + window.scrollY;
-  if (scrollBottom >= document.body.offsetHeight - 200) {
+  if (vrNearBottom(200)) {
     vrRenderTbody(false);
     vrRenderCards();
   }
@@ -4715,8 +4806,7 @@ window.addEventListener('scroll', function () {
   if (typeof onActiveTab === 'undefined' || onActiveTab !== 'pending') return;
   if (typeof onRenderCount === 'undefined' || typeof onVisibleRaporlar === 'undefined') return;
   if (onRenderCount >= onVisibleRaporlar.length) return;
-  const scrollBottom = window.innerHeight + window.scrollY;
-  if (scrollBottom >= document.body.offsetHeight - 200) {
+  if (vrNearBottom(200)) {
     onRenderMore();
   }
 });
@@ -4911,7 +5001,13 @@ function vrDeleteFav(i) {
   vrRenderFavMenu();
 }
 
-// ---------- SÜTUN GÖRÜNÜRLÜĞÜ ----------
+// ---------- SÜTUN GÖRÜNÜRLÜĞÜ + SIRALAMA ----------
+// Sabit (taşınamaz) sütunlar: başta "rowCheck" + "idx", sonda "actions"
+const VR_FIXED_START = ['rowCheck', 'idx'];
+const VR_FIXED_END   = ['actions'];
+function vrIsReorderable(key) {
+  return !VR_FIXED_START.includes(key) && !VR_FIXED_END.includes(key);
+}
 function vrLoadColumnVisibility() {
   let saved;
   try { saved = JSON.parse(localStorage.getItem(VR_LS.cols) || 'null'); } catch (_) { saved = null; }
@@ -4920,22 +5016,57 @@ function vrLoadColumnVisibility() {
       if (saved.hasOwnProperty(c.key)) c.visible = !!saved[c.key];
     });
   }
+  // Kaydedilmiş sıra varsa uygula
+  let order;
+  try { order = JSON.parse(localStorage.getItem(VR_LS.colOrder) || 'null'); } catch (_) { order = null; }
+  if (Array.isArray(order) && order.length) vrApplyColumnOrder(order);
 }
 function vrSaveColumnVisibility() {
   const map = {};
   VR_COLUMNS.forEach(c => { map[c.key] = c.visible; });
   try { localStorage.setItem(VR_LS.cols, JSON.stringify(map)); } catch (_) {}
 }
+function vrSaveColumnOrder() {
+  const order = VR_COLUMNS.map(c => c.key);
+  try { localStorage.setItem(VR_LS.colOrder, JSON.stringify(order)); } catch (_) {}
+}
+function vrApplyColumnOrder(order) {
+  // Kayıtlı sırayı VR_COLUMNS'a uygula; bilinmeyen/yeni sütunlar korunur
+  const byKey = {};
+  VR_COLUMNS.forEach(c => { byKey[c.key] = c; });
+  const start = VR_FIXED_START.filter(k => byKey[k]).map(k => byKey[k]);
+  const end   = VR_FIXED_END.filter(k => byKey[k]).map(k => byKey[k]);
+  const middle = [];
+  const taken = new Set([...VR_FIXED_START, ...VR_FIXED_END]);
+  order.forEach(k => {
+    if (byKey[k] && vrIsReorderable(k) && !taken.has(k)) { middle.push(byKey[k]); taken.add(k); }
+  });
+  // Kaydedilmiş sırada olmayan (yeni) sütunları eski yerine ekle
+  VR_COLUMNS.forEach(c => { if (!taken.has(c.key) && vrIsReorderable(c.key)) middle.push(c); });
+  const next = [...start, ...middle, ...end];
+  VR_COLUMNS.length = 0;
+  next.forEach(c => VR_COLUMNS.push(c));
+}
 function vrOpenColumnsModal() {
-  const checkable = VR_COLUMNS.filter(c => c.key !== 'rowCheck' && c.key !== 'idx' && c.key !== 'actions');
-  const body = checkable.map(c =>
-    `<label style="display:flex;align-items:center;gap:8px;padding:6px;">
-      <input type="checkbox" data-col="${c.key}" ${c.visible ? 'checked' : ''}> ${vrEsc(c.label)}
-    </label>`
-  ).join('');
-  vrShowModal('⚙️ Sütun Görünürlüğü', body,
+  const items = VR_COLUMNS.filter(c => vrIsReorderable(c.key));
+  const body =
+    `<div style="font-size:.8rem;color:var(--text2);margin-bottom:8px;">
+       Sırayı değiştirmek için ☰ tutamacından sürükleyin. Görünürlük için kutucuğu işaretleyin.
+     </div>
+     <div id="vrColList" class="vr-col-list">` +
+    items.map(c => `
+      <div class="vr-col-row" data-col="${c.key}">
+        <span class="vr-col-handle" aria-label="Sürükle">☰</span>
+        <label style="display:flex;align-items:center;gap:8px;flex:1;cursor:pointer;">
+          <input type="checkbox" data-col="${c.key}" ${c.visible ? 'checked' : ''}>
+          <span>${vrEsc(c.label)}</span>
+        </label>
+      </div>`).join('') +
+    `</div>`;
+  vrShowModal('⚙️ Sütunlar — Görünürlük & Sıra', body,
     `<button class="primary" onclick="vrApplyColumnVisibility()">Uygula</button>
      <button onclick="vrCloseModal()">İptal</button>`);
+  setTimeout(() => vrInitColReorder(document.getElementById('vrColList')), 0);
 }
 function vrApplyColumnVisibility() {
   const boxes = document.querySelectorAll('.vr-modal-body input[data-col]');
@@ -4943,9 +5074,133 @@ function vrApplyColumnVisibility() {
     const col = VR_COLUMNS.find(c => c.key === b.getAttribute('data-col'));
     if (col) col.visible = b.checked;
   });
+  // Modal'daki sırayı yakala
+  const rows = document.querySelectorAll('#vrColList .vr-col-row');
+  if (rows.length) {
+    const newOrder = Array.from(rows).map(el => el.getAttribute('data-col'));
+    vrApplyColumnOrder(newOrder);
+    vrSaveColumnOrder();
+  }
   vrSaveColumnVisibility();
   vrCloseModal();
   vrApplyFilters();
+}
+
+// Modal listesinde pointer ile sıralama
+function vrInitColReorder(listEl) {
+  if (!listEl) return;
+  let dragging = null, placeholder = null, offsetY = 0;
+  const rows = () => Array.from(listEl.querySelectorAll('.vr-col-row'));
+  listEl.querySelectorAll('.vr-col-handle').forEach(h => {
+    h.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      const row = h.closest('.vr-col-row'); if (!row) return;
+      dragging = row;
+      const rect = row.getBoundingClientRect();
+      offsetY = e.clientY - rect.top;
+      placeholder = document.createElement('div');
+      placeholder.className = 'vr-col-placeholder';
+      placeholder.style.height = rect.height + 'px';
+      row.parentNode.insertBefore(placeholder, row);
+      row.classList.add('vr-col-dragging');
+      row.style.width = rect.width + 'px';
+      row.style.left  = rect.left + 'px';
+      row.style.top   = rect.top + 'px';
+      document.body.appendChild(row);
+      h.setPointerCapture(e.pointerId);
+      const onMove = (ev) => {
+        if (!dragging) return;
+        dragging.style.top = (ev.clientY - offsetY) + 'px';
+        // İmlecin üstünde olduğu satırı bul
+        const over = rows().find(r => {
+          if (r === dragging) return false;
+          const rr = r.getBoundingClientRect();
+          return ev.clientY >= rr.top && ev.clientY <= rr.bottom;
+        });
+        if (over) {
+          const rr = over.getBoundingClientRect();
+          const before = ev.clientY < rr.top + rr.height / 2;
+          over.parentNode.insertBefore(placeholder, before ? over : over.nextSibling);
+        }
+      };
+      const onUp = (ev) => {
+        h.releasePointerCapture(e.pointerId);
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        window.removeEventListener('pointercancel', onUp);
+        if (dragging && placeholder) {
+          dragging.classList.remove('vr-col-dragging');
+          dragging.style.cssText = '';
+          placeholder.parentNode.insertBefore(dragging, placeholder);
+          placeholder.remove();
+        }
+        dragging = null; placeholder = null;
+      };
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+      window.addEventListener('pointercancel', onUp);
+    });
+  });
+}
+
+// Tablo başlığında pointer ile sıralama
+function vrInitTheadReorder() {
+  const thead = document.getElementById('vrThead');
+  if (!thead) return;
+  const ths = Array.from(thead.querySelectorAll('th[data-col]'));
+  ths.forEach(th => {
+    const key = th.getAttribute('data-col');
+    if (!vrIsReorderable(key)) return;
+    th.addEventListener('pointerdown', (e) => {
+      // Başlık içindeki sort/filter butonları drag başlatmasın
+      if (e.target.closest('.col-filter, .sort-ind')) return;
+      // Sağ/sol tık ayırt et
+      if (e.button !== undefined && e.button !== 0) return;
+      let startX = e.clientX, started = false, suppressClick = false;
+      const onMove = (ev) => {
+        const dx = ev.clientX - startX;
+        if (!started && Math.abs(dx) < 6) return;
+        started = true; suppressClick = true;
+        th.classList.add('vr-th-dragging');
+        // Üzerinden geçilen th'yi bul
+        const el = document.elementFromPoint(ev.clientX, ev.clientY);
+        const overTh = el && el.closest && el.closest('th[data-col]');
+        ths.forEach(x => x.classList.remove('vr-th-over'));
+        if (overTh && overTh !== th && vrIsReorderable(overTh.getAttribute('data-col'))) {
+          overTh.classList.add('vr-th-over');
+        }
+      };
+      const onUp = (ev) => {
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        window.removeEventListener('pointercancel', onUp);
+        th.classList.remove('vr-th-dragging');
+        ths.forEach(x => x.classList.remove('vr-th-over'));
+        if (!started) return;
+        const el = document.elementFromPoint(ev.clientX, ev.clientY);
+        const overTh = el && el.closest && el.closest('th[data-col]');
+        if (!overTh || overTh === th) return;
+        const targetKey = overTh.getAttribute('data-col');
+        if (!vrIsReorderable(targetKey)) return;
+        // VR_COLUMNS içinde taşı
+        const fromIdx = VR_COLUMNS.findIndex(c => c.key === key);
+        const toIdx   = VR_COLUMNS.findIndex(c => c.key === targetKey);
+        if (fromIdx < 0 || toIdx < 0) return;
+        const [moved] = VR_COLUMNS.splice(fromIdx, 1);
+        VR_COLUMNS.splice(toIdx, 0, moved);
+        vrSaveColumnOrder();
+        vrApplyFilters();
+        // Sonraki tıklamayı sıralama olarak yorumlama
+        if (suppressClick) {
+          const blocker = (cev) => { cev.stopPropagation(); cev.preventDefault(); window.removeEventListener('click', blocker, true); };
+          window.addEventListener('click', blocker, true);
+        }
+      };
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+      window.addEventListener('pointercancel', onUp);
+    });
+  });
 }
 
 // ---------- TOPLU SEÇİM ----------
@@ -5406,7 +5661,9 @@ function vrEsc(s) {
 }
 function vrDate(iso) {
   if (!iso) return '—';
-  const p = String(iso).split('-');
+  // Full ISO timestamp (2026-04-14T21:00:00.000Z) → sadece tarih kısmı
+  const s = String(iso).slice(0, 10);
+  const p = s.split('-');
   if (p.length !== 3) return iso;
   return p[2] + '.' + p[1] + '.' + p[0];
 }
@@ -5430,19 +5687,148 @@ let onSortDir          = 'desc';
 
 // pgOnay tablo sütun tanımları (sıralama için)
 const ON_COLUMNS = [
-  { key: '',               label: '',             sortable: false },
-  { key: 'oncelik',        label: 'Öncelik',      sortable: true  },
-  { key: 'raporNo',        label: 'Rapor No',     sortable: true  },
-  { key: 'devLabel',       label: 'Cihaz',        sortable: true  },
-  { key: 'marka',          label: 'Marka',        sortable: true  },
-  { key: 'model',          label: 'Model',        sortable: true  },
-  { key: 'saglikTesisi',   label: 'Sağlık Tesisi',sortable: true  },
-  { key: 'testiUygulayan', label: 'Teknisyen',    sortable: true  },
-  { key: 'raporTarihi',    label: 'Tarih',        sortable: true  },
-  { key: 'wait',           label: 'Bekleme',      sortable: true  },
-  { key: 'sonuc',          label: 'Genel Sonuç',  sortable: true  },
-  { key: 'actions',        label: 'İşlem',        sortable: false }
+  { key: 'rowCheck',       label: '',             sortable: false, visible: true },
+  { key: 'oncelik',        label: 'Öncelik',      sortable: true,  visible: true },
+  { key: 'raporNo',        label: 'Rapor No',     sortable: true,  visible: true },
+  { key: 'devLabel',       label: 'Cihaz',        sortable: true,  visible: true },
+  { key: 'marka',          label: 'Marka',        sortable: true,  visible: true },
+  { key: 'model',          label: 'Model',        sortable: true,  visible: true },
+  { key: 'saglikTesisi',   label: 'Sağlık Tesisi',sortable: true,  visible: true },
+  { key: 'testiUygulayan', label: 'Teknisyen',    sortable: true,  visible: true },
+  { key: 'raporTarihi',    label: 'Tarih',        sortable: true,  visible: true },
+  { key: 'wait',           label: 'Bekleme',      sortable: true,  visible: true },
+  { key: 'sonuc',          label: 'Genel Sonuç',  sortable: true,  visible: true },
+  { key: 'actions',        label: 'İşlem',        sortable: false, visible: true }
 ];
+const ON_LS = {
+  cols:     'bmk_on_visible_cols',
+  colOrder: 'bmk_on_col_order'
+};
+const ON_FIXED_START = ['rowCheck'];
+const ON_FIXED_END   = ['actions'];
+function onIsReorderable(key) {
+  return !ON_FIXED_START.includes(key) && !ON_FIXED_END.includes(key);
+}
+function onLoadColumnPrefs() {
+  let vis;
+  try { vis = JSON.parse(localStorage.getItem(ON_LS.cols) || 'null'); } catch (_) { vis = null; }
+  if (vis) ON_COLUMNS.forEach(c => { if (vis.hasOwnProperty(c.key)) c.visible = !!vis[c.key]; });
+  let order;
+  try { order = JSON.parse(localStorage.getItem(ON_LS.colOrder) || 'null'); } catch (_) { order = null; }
+  if (Array.isArray(order) && order.length) onApplyColumnOrder(order);
+}
+function onSaveColumnVisibility() {
+  const map = {};
+  ON_COLUMNS.forEach(c => { map[c.key] = c.visible; });
+  try { localStorage.setItem(ON_LS.cols, JSON.stringify(map)); } catch (_) {}
+}
+function onSaveColumnOrder() {
+  try { localStorage.setItem(ON_LS.colOrder, JSON.stringify(ON_COLUMNS.map(c => c.key))); } catch (_) {}
+}
+function onApplyColumnOrder(order) {
+  const byKey = {};
+  ON_COLUMNS.forEach(c => { byKey[c.key] = c; });
+  const start = ON_FIXED_START.filter(k => byKey[k]).map(k => byKey[k]);
+  const end   = ON_FIXED_END.filter(k => byKey[k]).map(k => byKey[k]);
+  const middle = [];
+  const taken = new Set([...ON_FIXED_START, ...ON_FIXED_END]);
+  order.forEach(k => {
+    if (byKey[k] && onIsReorderable(k) && !taken.has(k)) { middle.push(byKey[k]); taken.add(k); }
+  });
+  ON_COLUMNS.forEach(c => { if (!taken.has(c.key) && onIsReorderable(c.key)) middle.push(c); });
+  const next = [...start, ...middle, ...end];
+  ON_COLUMNS.length = 0;
+  next.forEach(c => ON_COLUMNS.push(c));
+}
+function onOpenColumnsModal() {
+  const items = ON_COLUMNS.filter(c => onIsReorderable(c.key));
+  const body =
+    `<div style="font-size:.8rem;color:var(--text2);margin-bottom:8px;">
+       Sırayı değiştirmek için ☰ tutamacından sürükleyin. Görünürlük için kutucuğu işaretleyin.
+     </div>
+     <div id="onColList" class="vr-col-list">` +
+    items.map(c => `
+      <div class="vr-col-row" data-col="${c.key}">
+        <span class="vr-col-handle" aria-label="Sürükle">☰</span>
+        <label style="display:flex;align-items:center;gap:8px;flex:1;cursor:pointer;">
+          <input type="checkbox" data-col="${c.key}" ${c.visible ? 'checked' : ''}>
+          <span>${vrEsc(c.label)}</span>
+        </label>
+      </div>`).join('') +
+    `</div>`;
+  vrShowModal('⚙️ Sütunlar — Görünürlük & Sıra', body,
+    `<button class="primary" onclick="onApplyColumnPrefs()">Uygula</button>
+     <button onclick="vrCloseModal()">İptal</button>`);
+  setTimeout(() => vrInitColReorder(document.getElementById('onColList')), 0);
+}
+function onApplyColumnPrefs() {
+  const boxes = document.querySelectorAll('.vr-modal-body input[data-col]');
+  boxes.forEach(b => {
+    const col = ON_COLUMNS.find(c => c.key === b.getAttribute('data-col'));
+    if (col) col.visible = b.checked;
+  });
+  const rows = document.querySelectorAll('#onColList .vr-col-row');
+  if (rows.length) {
+    onApplyColumnOrder(Array.from(rows).map(el => el.getAttribute('data-col')));
+    onSaveColumnOrder();
+  }
+  onSaveColumnVisibility();
+  vrCloseModal();
+  onRenderTable();
+}
+function onInitTheadReorder() {
+  const thead = document.getElementById('onThead');
+  if (!thead) return;
+  const ths = Array.from(thead.querySelectorAll('th[data-col]'));
+  ths.forEach(th => {
+    const key = th.getAttribute('data-col');
+    if (!onIsReorderable(key)) return;
+    th.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.col-filter, .sort-ind')) return;
+      if (e.button !== undefined && e.button !== 0) return;
+      let startX = e.clientX, started = false, suppressClick = false;
+      const onMove = (ev) => {
+        const dx = ev.clientX - startX;
+        if (!started && Math.abs(dx) < 6) return;
+        started = true; suppressClick = true;
+        th.classList.add('vr-th-dragging');
+        const el = document.elementFromPoint(ev.clientX, ev.clientY);
+        const overTh = el && el.closest && el.closest('th[data-col]');
+        ths.forEach(x => x.classList.remove('vr-th-over'));
+        if (overTh && overTh !== th && onIsReorderable(overTh.getAttribute('data-col'))) {
+          overTh.classList.add('vr-th-over');
+        }
+      };
+      const onUp = (ev) => {
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        window.removeEventListener('pointercancel', onUp);
+        th.classList.remove('vr-th-dragging');
+        ths.forEach(x => x.classList.remove('vr-th-over'));
+        if (!started) return;
+        const el = document.elementFromPoint(ev.clientX, ev.clientY);
+        const overTh = el && el.closest && el.closest('th[data-col]');
+        if (!overTh || overTh === th) return;
+        const targetKey = overTh.getAttribute('data-col');
+        if (!onIsReorderable(targetKey)) return;
+        const fromIdx = ON_COLUMNS.findIndex(c => c.key === key);
+        const toIdx   = ON_COLUMNS.findIndex(c => c.key === targetKey);
+        if (fromIdx < 0 || toIdx < 0) return;
+        const [moved] = ON_COLUMNS.splice(fromIdx, 1);
+        ON_COLUMNS.splice(toIdx, 0, moved);
+        onSaveColumnOrder();
+        onRenderTable();
+        if (suppressClick) {
+          const blocker = (cev) => { cev.stopPropagation(); cev.preventDefault(); window.removeEventListener('click', blocker, true); };
+          window.addEventListener('click', blocker, true);
+        }
+      };
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+      window.addEventListener('pointercancel', onUp);
+    });
+  });
+}
 
 function onSortBy(key) {
   if (onSortKey === key) {
@@ -5492,6 +5878,7 @@ async function goOnay() {
 }
 
 async function onInit(forceReload) {
+  onLoadColumnPrefs();
   await loadVeriler(forceReload);          // pgVeriler ile aynı kaynak
   onAllRaporlar = vrAllRaporlar.slice();
 
@@ -5680,10 +6067,37 @@ function onRenderStats4() {
     : 0;
 
   document.getElementById('onStats').innerHTML =
-    vrStatCard('yellow','⏳ Bekleyen', bekleyen) +
-    vrStatCard('green', '✅ Bu ay onaylanan', onaylanan) +
-    vrStatCard('red',   '❌ Bu ay reddedilen', reddedilen) +
-    vrStatCard('blue',  '⌛ Ort. onay süresi', ortSure + ' gün');
+    onStatCard('yellow','⏳ Bekleyen',        bekleyen,          'pending') +
+    onStatCard('green', '✅ Bu ay onaylanan', onaylanan,          'approved') +
+    onStatCard('red',   '❌ Bu ay reddedilen',reddedilen,         'rejected') +
+    onStatCard('blue',  '⌛ Ort. onay süresi',ortSure + ' gün',   'stats');
+}
+function onStatCard(cls, lbl, val, action) {
+  const active = (action === 'pending' && onActiveTab === 'pending') ? 'active' : '';
+  return `<div class="vr-stat ${cls} clickable ${active}" onclick="onStatClick('${action}')">
+    <div class="lbl">${lbl}</div><div class="val">${val}</div></div>`;
+}
+function onStatClick(action) {
+  if (action === 'pending') {
+    // Bekleyenler sekmesine geç, filtreleri temizle
+    if (onActiveTab !== 'pending') onSwitchTab('pending');
+    else onClearFilters();
+    return;
+  }
+  if (action === 'stats') { onSwitchTab('stats'); return; }
+  // approved / rejected → Geçmiş sekmesine geç + durumu + bu ay aralığı
+  onSwitchTab('history');
+  const now = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth(), 1);
+  const last  = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const iso = d => d.toISOString().slice(0,10);
+  const durumEl = document.getElementById('onHistDurum');
+  const basEl   = document.getElementById('onHistTarihBas');
+  const bitEl   = document.getElementById('onHistTarihBit');
+  if (durumEl) durumEl.value = action;
+  if (basEl)   basEl.value   = iso(first);
+  if (bitEl)   bitEl.value   = iso(last);
+  onRenderHistory();
 }
 
 // ---------- BANNER (3+ gün uyarısı) ----------
@@ -5700,21 +6114,23 @@ function onRenderTable() {
   const tbody = document.getElementById('onTbody');
   const thead = document.getElementById('onThead');
 
-  // Sıralanabilir thead — ON_COLUMNS'tan dinamik üret
-  const headCells = ON_COLUMNS.map(c => {
-    if (c.key === '') {
-      return '<th style="width:36px;"><input type="checkbox" id="onSelAll" onclick="onToggleSelectAll(this)"></th>';
+  // Sıralanabilir thead — ON_COLUMNS'tan dinamik üret (sadece görünür sütunlar)
+  const headCells = ON_COLUMNS.filter(c => c.visible).map(c => {
+    if (c.key === 'rowCheck') {
+      return '<th data-col="rowCheck" style="width:36px;"><input type="checkbox" id="onSelAll" onclick="onToggleSelectAll(this)"></th>';
     }
+    const drag = onIsReorderable(c.key) ? ' vr-th-draggable' : '';
     if (!c.sortable) {
-      return '<th>' + vrEsc(c.label) + '</th>';
+      return '<th data-col="' + c.key + '" class="' + drag.trim() + '">' + vrEsc(c.label) + '</th>';
     }
     const isActive = (onSortKey === c.key);
     const ind = isActive ? (onSortDir === 'asc' ? ' ↑' : ' ↓') : ' ↕';
-    const cls = isActive ? 'sort-active' : '';
-    return '<th class="' + cls + '" onclick="onSortBy(\'' + c.key + '\')">' +
+    const cls = (isActive ? 'sort-active' : '') + drag;
+    return '<th data-col="' + c.key + '" class="' + cls.trim() + '" onclick="onSortBy(\'' + c.key + '\')">' +
            vrEsc(c.label) + '<span class="sort-ind">' + ind + '</span></th>';
   }).join('');
   thead.innerHTML = '<tr>' + headCells + '</tr>';
+  onInitTheadReorder();
 
   if (!onVisibleRaporlar.length) {
     tbody.innerHTML = '<tr><td colspan="12" class="vr-empty">Bekleyen rapor yok</td></tr>';
@@ -5761,26 +6177,34 @@ function onBuildRowHtml(r) {
   const newCls  = onNewRowSet.has(r.raporNo) ? ' vr-row-new-' + _onSt : '';
   const newTag  = onNewRowSet.has(r.raporNo) ? '<span class="vr-new-tag tag-' + _onSt + '">● YENİ</span>' : '';
 
-  return `<tr class="${sel}${newCls}">
-    <td><input type="checkbox" ${onSelected.has(r.raporNo) ? 'checked' : ''}
-               onclick="onToggleSelect('${vrEsc(r.raporNo)}', this)"></td>
-    <td><span class="on-prio ${prio}" title="${prioLabel[prio]}">${prioIcon[prio]}</span></td>
-    <td>${newTag}<span class="rno" title="PDF önizlemeyi aç" onclick="vrOpenPdfFromList('${vrEsc(r.raporNo)}')">${vrEsc(r.raporNo)}</span></td>
-    <td>${vrEsc(vrDevLabel(r.devType))}</td>
-    <td>${vrEsc(r.marka || '—')}</td>
-    <td>${vrEsc(r.model || '—')}</td>
-    <td>${vrEsc(r.saglikTesisi || '—')}</td>
-    <td>${vrEsc(r.testiUygulayan || '—')}</td>
-    <td>${vrDate(r.raporTarihi)}</td>
-    <td><span class="on-wait ${waitCls}">${wait} gün</span></td>
-    <td><span class="on-result ${sonuc}">${ON_RESULT_LABEL[sonuc]}</span></td>
-    <td>
+  const cells = ON_COLUMNS.filter(c => c.visible).map(c => {
+    switch (c.key) {
+      case 'rowCheck':
+        return `<td><input type="checkbox" ${onSelected.has(r.raporNo) ? 'checked' : ''}
+               onclick="onToggleSelect('${vrEsc(r.raporNo)}', this)"></td>`;
+      case 'oncelik':
+        return `<td><span class="on-prio ${prio}" title="${prioLabel[prio]}">${prioIcon[prio]}</span></td>`;
+      case 'raporNo':
+        return `<td>${newTag}<span class="rno" title="PDF önizlemeyi aç" onclick="vrOpenPdfFromList('${vrEsc(r.raporNo)}')">${vrEsc(r.raporNo)}</span></td>`;
+      case 'devLabel':       return `<td>${vrEsc(vrDevLabel(r.devType))}</td>`;
+      case 'marka':          return `<td>${vrEsc(r.marka || '—')}</td>`;
+      case 'model':          return `<td>${vrEsc(r.model || '—')}</td>`;
+      case 'saglikTesisi':   return `<td>${vrEsc(r.saglikTesisi || '—')}</td>`;
+      case 'testiUygulayan': return `<td>${vrEsc(r.testiUygulayan || '—')}</td>`;
+      case 'raporTarihi':    return `<td>${vrDate(r.raporTarihi)}</td>`;
+      case 'wait':           return `<td><span class="on-wait ${waitCls}">${wait} gün</span></td>`;
+      case 'sonuc':          return `<td><span class="on-result ${sonuc}">${ON_RESULT_LABEL[sonuc]}</span></td>`;
+      case 'actions':
+        return `<td>
       <button class="row-act" title="İncele" onclick="onOpenDetay('${vrEsc(r.raporNo)}')">👁</button>
       <button class="row-act" title="Onayla" onclick="onOpenApprove('${vrEsc(r.raporNo)}')">✅</button>
       <button class="row-act" title="Reddet" onclick="onOpenReject('${vrEsc(r.raporNo)}')">❌</button>
       <button class="row-act" title="Revizyon İste" onclick="onOpenRevision('${vrEsc(r.raporNo)}')">🔄</button>
-    </td>
-  </tr>`;
+    </td>`;
+      default: return '<td>—</td>';
+    }
+  }).join('');
+  return `<tr class="${sel}${newCls}">${cells}</tr>`;
 }
 
 function onBuildCardHtml(r) {
@@ -10609,6 +11033,45 @@ _readDeepLinkRapor();   // QR'dan ?rapor=... varsa yakala (login'den önce)
 renderDots();
 initSplash();
 initPressFeedback();
+initEdgeSwipeBack();
+
+// =====================================================
+// KENAR KAYDIRMA → ANA MENÜ (sağdan sola)
+// =====================================================
+// Telefon ekranının sağ kenarından parmağı sola kaydırınca ana menüye döner.
+// Sadece küçük ekranlarda (<=900px) aktif. Modal veya login/menü sayfalarında
+// tetiklenmez. Dikey kaydırma ile çakışmaması için yatay hareket baskın olmalı.
+function initEdgeSwipeBack() {
+  let sx = 0, sy = 0, sT = 0, tracking = false;
+  const EDGE   = 30;   // sağ kenar eşiği (px)
+  const THX    = 80;   // minimum yatay hareket
+  const MAXT   = 600;  // maksimum süre (ms)
+  document.addEventListener('touchstart', (e) => {
+    if (window.innerWidth > 900) return;
+    if (!e.touches || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    if (t.clientX < window.innerWidth - EDGE) return;
+    // Açık modal varsa swipe devre dışı
+    if (document.querySelector('.vr-modal, .md-modal, .modal.active, [id$="Modal"]:not(.hidden)')) return;
+    sx = t.clientX; sy = t.clientY; sT = Date.now(); tracking = true;
+  }, { passive: true });
+  document.addEventListener('touchend', (e) => {
+    if (!tracking) return;
+    tracking = false;
+    const t = (e.changedTouches && e.changedTouches[0]); if (!t) return;
+    const dx = t.clientX - sx, dy = t.clientY - sy, dt = Date.now() - sT;
+    if (dt > MAXT) return;
+    if (-dx < THX) return;               // yeterince sola gitmedi
+    if (Math.abs(dy) > Math.abs(dx)/2) return; // dikey baskın → scroll
+    // Aktif sayfa menü veya login ise çık
+    const active = document.querySelector('.page.active');
+    if (!active) return;
+    const id = active.id;
+    if (id === 'pgMenu' || id === 'pgLogin' || id === 'pgSplash') return;
+    if (typeof currentUser === 'undefined' || !currentUser) return;
+    if (typeof goBackToMenu === 'function') goBackToMenu();
+  }, { passive: true });
+}
 </script>
 </body>
 </html>
