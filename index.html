@@ -51,6 +51,29 @@ html, body {
 /* Butonları SADECE bu class ile gizle */
 .hidden { display: none !important; }
 
+/* Sağ kenar "sola kaydır → menü" jest bölgesi. Görünmez bir şerit;
+   sadece burada başlayan yatay hareketler jesti tetikler, böylece
+   ekranın başka yerinde dikey scroll hiç etkilenmez. Varsayılan
+   touch-action pan-y: dikey scroll hâlâ mümkün. Yatay baskınlık
+   tespit edilince JS preventDefault ile jesti sahipleniyor. */
+#edgeSwipeZone {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 18px;
+  height: 100%;
+  z-index: 50;
+  background: transparent;
+  touch-action: pan-y;
+  display: none;
+}
+#edgeSwipeZone.active { display: block; }
+/* Jest commit edilince kısa süre görünür bir iz bırak (kullanıcı jestin
+   alındığını anlasın). */
+#edgeSwipeZone.committed {
+  background: linear-gradient(to left, rgba(200, 16, 46, 0.18), transparent);
+}
+
 /* ========== SAYFA YÖNETİMİ ========== */
 .page {
   display: none;
@@ -2809,6 +2832,11 @@ th.vr-th-over      { background: rgba(59,130,246,.15) !important; outline: 2px d
   </div>
 </div>
 
+<!-- Sağ kenar: "sola kaydır → menü" jest bölgesi. Sadece mobilde ve uygun
+     sayfalarda aktif olur (bkz. _updateEdgeZone). Zone dışında scroll
+     serbest; zone içinde yatay hareket baskın olunca jest tetiklenir. -->
+<div id="edgeSwipeZone" aria-hidden="true"></div>
+
 <!-- Global yükleniyor overlay'i — panel/form açılışlarında gösterilir -->
 <div id="loadingOverlay" class="hidden">
   <div class="lo-box">
@@ -2882,6 +2910,8 @@ function showPage(id) {
       localStorage.setItem('bmk_last_page_' + currentUser.tc, id);
     }
   } catch (_) {}
+  // Sağ kenar jest bölgesini güncelle
+  if (typeof _updateEdgeZone === 'function') _updateEdgeZone();
 }
 
 // Splash/Login dışındaki, durumu sunucudan yeniden yüklenebilen sayfalar
@@ -3870,8 +3900,18 @@ const SEEN_KEYS = {
 //   2) CHANGELOG'un EN ÜSTÜNE yeni bir girdi ekle
 // Login sonrası, kullanıcı daha önce bu sürümü görmediyse popup açılır.
 // =====================================================
-const APP_VERSION = '2026.04.15.6';
+const APP_VERSION = '2026.04.15.7';
 const CHANGELOG = [
+  {
+    version: '2026.04.15.7',
+    title: 'Sürüm 15 Nisan 2026 (7)',
+    items: [
+      '"Sola kaydır → ana menü" jesti artık sadece ekranın sağ kenarındaki 18 piksellik görünmez şeritten başlayan dokunuşları dinliyor',
+      'Ekranın geri kalanında dikey kaydırma hiçbir şekilde etkilenmiyor — Android\'deki karışıklık giderildi',
+      'Jest başarıyla "sahiplenildiğinde" sağ kenarda hafif kırmızımsı bir iz beliriyor (geri bildirim)',
+      'Jest bölgesi sadece mobil genişlikte ve ana menü/login dışı sayfalarda aktif'
+    ]
+  },
   {
     version: '2026.04.15.6',
     title: 'Sürüm 15 Nisan 2026 (6)',
@@ -11116,56 +11156,71 @@ initEdgeSwipeBack();
 // Telefon ekranının sağ kenarından parmağı sola kaydırınca ana menüye döner.
 // Sadece küçük ekranlarda (<=900px) aktif. Modal veya login/menü sayfalarında
 // tetiklenmez. Dikey kaydırma ile çakışmaması için yatay hareket baskın olmalı.
+// "Sola kaydır → ana menü" jesti — sadece sağ kenardaki dar (18px) görünmez
+// şeritten başlayan dokunuşlar dinlenir. Böylece ekranın geri kalanında
+// dikey scroll hiçbir şekilde etkilenmez. Jest bölgesi yalnızca uygun
+// sayfalarda mobil genişlikte aktif olur (bkz. _updateEdgeZone).
 function initEdgeSwipeBack() {
+  const zone = document.getElementById('edgeSwipeZone');
+  if (!zone) return;
   let sx = 0, sy = 0, sT = 0, tracking = false, committed = false;
-  const EDGE   = 30;   // sağ kenar eşiği (px)
-  const THX    = 80;   // minimum yatay hareket
-  const MAXT   = 600;  // maksimum süre (ms)
-  const CLAIM  = 14;   // yatay hareket bu eşiği geçince dikey scroll'u iptal et
-  document.addEventListener('touchstart', (e) => {
+  const THX    = 90;   // menüye dönüş için minimum yatay hareket
+  const MAXT   = 700;  // maksimum süre (ms)
+  const CLAIM  = 18;   // bu kadar sola gittiğinde dikey scroll'u kes
+  zone.addEventListener('touchstart', (e) => {
     tracking = false; committed = false;
-    if (window.innerWidth > 900) return;
     if (!e.touches || e.touches.length !== 1) return;
-    const t = e.touches[0];
-    if (t.clientX < window.innerWidth - EDGE) return;
-    // Açık modal varsa swipe devre dışı
     if (document.querySelector('.vr-modal, .md-modal, .modal.active, [id$="Modal"]:not(.hidden)')) return;
+    const t = e.touches[0];
     sx = t.clientX; sy = t.clientY; sT = Date.now(); tracking = true;
   }, { passive: true });
-  // touchmove passive:false — yatay swipe baskın olduğunda dikey kaymayı iptal et
-  document.addEventListener('touchmove', (e) => {
+  zone.addEventListener('touchmove', (e) => {
     if (!tracking || !e.touches || e.touches.length !== 1) return;
     const t = e.touches[0];
     const dx = t.clientX - sx, dy = t.clientY - sy;
     if (!committed) {
-      // Kullanıcı belirgin şekilde dikey gidiyorsa gesture'ı bırak (scroll serbest)
-      if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { tracking = false; return; }
-      // Yatay (sola) baskın → bize ait
-      if (-dx >= CLAIM && Math.abs(dx) > Math.abs(dy)) committed = true;
+      // Dikey baskınsa jesti bırak, scroll serbest kalsın
+      if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) { tracking = false; return; }
+      // Yatay (sola) yeterince gittiyse gesture'ı sahiplen
+      if (-dx >= CLAIM && Math.abs(dx) > Math.abs(dy)) {
+        committed = true;
+        zone.classList.add('committed');
+      }
     }
     if (committed) { try { e.preventDefault(); } catch (_) {} }
   }, { passive: false });
-  document.addEventListener('touchend', (e) => {
-    if (!tracking) return;
+  const cleanup = () => { zone.classList.remove('committed'); tracking = false; committed = false; };
+  zone.addEventListener('touchend', (e) => {
+    if (!tracking) { cleanup(); return; }
     const wasCommitted = committed;
-    tracking = false; committed = false;
-    const t = (e.changedTouches && e.changedTouches[0]); if (!t) return;
+    const t = (e.changedTouches && e.changedTouches[0]);
+    cleanup();
+    if (!t) return;
     const dx = t.clientX - sx, dy = t.clientY - sy, dt = Date.now() - sT;
     if (dt > MAXT) return;
-    if (-dx < THX) return;                      // yeterince sola gitmedi
-    if (!wasCommitted && Math.abs(dy) > Math.abs(dx)/2) return; // dikey baskın
-    // Aktif sayfa menü veya login ise çık
-    const active = document.querySelector('.page.active');
-    if (!active) return;
-    const id = active.id;
-    if (id === 'pgMenu' || id === 'pgLogin' || id === 'pgSplash') return;
+    if (-dx < THX) return;
+    if (!wasCommitted && Math.abs(dy) > Math.abs(dx)/2) return;
     if (typeof currentUser === 'undefined' || !currentUser) return;
     if (typeof goBackToMenu === 'function') goBackToMenu();
   }, { passive: true });
-  document.addEventListener('touchcancel', () => {
-    tracking = false; committed = false;
-  }, { passive: true });
+  zone.addEventListener('touchcancel', cleanup, { passive: true });
 }
+
+// Jest bölgesini (edgeSwipeZone) doğru sayfalarda göster/gizle:
+// - Sadece mobil genişlikte
+// - Sadece menü/login/splash dışı sayfalarda
+// - Sadece giriş yapılmışsa
+function _updateEdgeZone() {
+  const zone = document.getElementById('edgeSwipeZone');
+  if (!zone) return;
+  const active = document.querySelector('.page.active');
+  const id = active ? active.id : '';
+  const mobile = window.innerWidth <= 900;
+  const loggedIn = (typeof currentUser !== 'undefined') && !!currentUser;
+  const onHidden = !id || id === 'pgMenu' || id === 'pgLogin' || id === 'pgSplash';
+  zone.classList.toggle('active', mobile && loggedIn && !onHidden);
+}
+window.addEventListener('resize', _updateEdgeZone);
 </script>
 </body>
 </html>
